@@ -25,25 +25,45 @@
 
 ## Запуск
 
-Повну інструкцію запуску через Docker Compose буде додано пізніше.
+### Через Docker Compose (рекомендовано)
+
+Потрібен [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+cp .env.example .env          # за потреби змініть паролі, порти та JWT_SECRET_KEY
+docker compose up -d --build
+```
+
+Під час старту backend автоматично застосовує міграції бази даних (`alembic upgrade head`).
+
+- API: http://localhost:8000/api/v1/health
+- Swagger UI: http://localhost:8000/docs
+- PostgreSQL: `localhost:5432` (користувач, пароль і база — з `.env`)
+
+Корисні команди:
+
+```bash
+docker compose logs -f backend   # логи backend
+docker compose down              # зупинити (дані БД зберігаються у volume pgdata)
+docker compose down -v           # зупинити й видалити дані БД
+```
 
 ### Backend локально (для розробки)
 
-Потрібен Python 3.12.
+Потрібен Python 3.12. База даних — з Docker Compose:
 
 ```bash
 cp .env.example .env
+docker compose up -d db
 cd backend
 python -m venv .venv
 .venv/Scripts/activate        # Windows (Git Bash); у Linux/macOS: source .venv/bin/activate
 pip install -r requirements-dev.txt
-alembic upgrade head          # потрібен запущений PostgreSQL (DATABASE_URL у .env)
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-- API: http://localhost:8000/api/v1/health
-- Swagger UI: http://localhost:8000/docs
-- Тести: `pytest`
+Тести використовують SQLite у пам'яті й не потребують PostgreSQL: `pytest`.
 
 ## Статус
 
