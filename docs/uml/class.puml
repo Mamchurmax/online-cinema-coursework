@@ -4,6 +4,7 @@ title Онлайн-кінотеатр — діаграма класів (реа�
 ' The diagram grows together with the code. Each GoF pattern has its own colour.
 !define SINGLETON #FFE8B0
 !define ADAPTER #CDEFD5
+!define BUILDER #D6E4FF
 
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
@@ -17,6 +18,7 @@ legend top right
   |= Колір |= Патерн |
   | <back:SINGLETON>      </back> | Singleton |
   | <back:ADAPTER>      </back> | Adapter |
+  | <back:BUILDER>      </back> | Builder |
 endlegend
 
 package "core" {
@@ -37,6 +39,12 @@ package "api.v1" {
   class MeRouter <<router>> {
     + read_me(user : User) : UserRead
   }
+  class CatalogRouter <<router>> {
+    + search_titles(filters : CatalogFilters) : TitlePage
+    + get_title(title_id) : TitleDetail
+    + list_genres() : list[GenreRead]
+    + list_countries() : list[CountryRead]
+  }
 }
 
 package "services" {
@@ -44,6 +52,36 @@ package "services" {
     + register(email, password, display_name) : User
     + login(email, password) : str
     + get_user_by_token(token) : User
+  }
+
+  package "catalog" {
+    class CatalogService <<Director>> BUILDER {
+      + search(filters : CatalogFilters) : TitlePage
+      + get_title(title_id) : Title
+      + list_genres() : list[Genre]
+      + list_countries() : list[Country]
+    }
+
+    class CatalogQueryBuilder <<Builder>> BUILDER {
+      - _conditions : list
+      - _order_by : list
+      + with_text(text) : CatalogQueryBuilder
+      + with_type(type) : CatalogQueryBuilder
+      + with_genres(ids) : CatalogQueryBuilder
+      + with_countries(codes) : CatalogQueryBuilder
+      + released_between(from, to) : CatalogQueryBuilder
+      + with_min_rating(rating) : CatalogQueryBuilder
+      + sorted_by(sort, order) : CatalogQueryBuilder
+      + paginate(page, size) : CatalogQueryBuilder
+      + build() : CatalogQuery
+    }
+
+    class CatalogQuery <<Product>> BUILDER {
+      + statement : Select
+      + count_statement : Select
+      + page : int
+      + page_size : int
+    }
   }
 
   package "importers" {
@@ -92,10 +130,16 @@ package "repositories" {
   }
   class TitleRepository {
     + get_by_tmdb_id(tmdb_id) : Title
+    + get_with_details(id) : Title
+    + find_page(statement, count_statement) : (list[Title], int)
     + add(title)
   }
-  class GenreRepository
-  class CountryRepository
+  class GenreRepository {
+    + list_all() : list[Genre]
+  }
+  class CountryRepository {
+    + list_all() : list[Country]
+  }
 }
 
 package "models" {
@@ -121,6 +165,14 @@ MeRouter ..> AuthService : get_current_user
 AuthService --> UserRepository
 AuthService ..> Settings
 UserRepository ..> User
+
+CatalogRouter --> CatalogService
+CatalogService ..> CatalogQueryBuilder : керує кроками
+CatalogQueryBuilder ..> CatalogQuery : будує
+CatalogService --> TitleRepository
+CatalogService --> GenreRepository
+CatalogService --> CountryRepository
+TitleRepository ..> CatalogQuery : виконує
 
 TmdbAdapter ..|> CatalogSource
 TmdbAdapter --> TmdbClient : адаптує
