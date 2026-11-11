@@ -1,0 +1,141 @@
+@startuml class
+title Онлайн-кінотеатр — діаграма класів (реалізовані частини)
+
+' The diagram grows together with the code. Each GoF pattern has its own colour.
+!define SINGLETON #FFE8B0
+!define ADAPTER #CDEFD5
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B6EA8
+}
+hide empty members
+
+legend top right
+  |= Колір |= Патерн |
+  | <back:SINGLETON>      </back> | Singleton |
+  | <back:ADAPTER>      </back> | Adapter |
+endlegend
+
+package "core" {
+  class Settings <<Singleton>> SINGLETON {
+    - {static} _instance : Settings
+    + database_url : str
+    + jwt_secret_key : str
+    + tmdb_api_token : str
+    + {static} instance() : Settings
+  }
+}
+
+package "api.v1" {
+  class AuthRouter <<router>> {
+    + register(body : RegisterRequest) : UserRead
+    + login(form) : TokenResponse
+  }
+  class MeRouter <<router>> {
+    + read_me(user : User) : UserRead
+  }
+}
+
+package "services" {
+  class AuthService {
+    + register(email, password, display_name) : User
+    + login(email, password) : str
+    + get_user_by_token(token) : User
+  }
+
+  package "importers" {
+    interface CatalogSource <<Target>> ADAPTER {
+      + get_movie(external_id) : TitleData
+      + get_series(external_id, max_seasons) : TitleData
+      + get_popular_ids(title_type, pages) : list[int]
+    }
+
+    class TmdbAdapter <<Adapter>> ADAPTER {
+      - _client : TmdbClient
+      + get_movie(external_id) : TitleData
+      + get_series(external_id, max_seasons) : TitleData
+      + get_popular_ids(title_type, pages) : list[int]
+    }
+
+    class TmdbClient <<Adaptee>> ADAPTER {
+      + movie(id, language) : dict
+      + tv(id, language) : dict
+      + tv_season(id, number, language) : dict
+      + popular(media, page, language) : dict
+    }
+
+    class TitleData <<dataclass>> {
+      + external_id : int
+      + type : TitleType
+      + title : str
+      + genres : list[GenreData]
+      + countries : list[CountryData]
+      + seasons : list[SeasonData]
+    }
+
+    class CatalogImportService {
+      + import_movies(ids) : ImportReport
+      + import_series(ids, max_seasons) : ImportReport
+      + import_popular(type, pages) : ImportReport
+    }
+  }
+}
+
+package "repositories" {
+  class UserRepository {
+    + get_by_id(id) : User
+    + get_by_email(email) : User
+    + save(user) : User
+  }
+  class TitleRepository {
+    + get_by_tmdb_id(tmdb_id) : Title
+    + add(title)
+  }
+  class GenreRepository
+  class CountryRepository
+}
+
+package "models" {
+  class User {
+    + email : str
+    + password_hash : str
+    + role : UserRole
+  }
+  class Title {
+    + tmdb_id : int
+    + type : TitleType
+    + title : str
+    + rating : Decimal
+  }
+  class Genre
+  class Country
+  class Season
+  class Episode
+}
+
+AuthRouter --> AuthService
+MeRouter ..> AuthService : get_current_user
+AuthService --> UserRepository
+AuthService ..> Settings
+UserRepository ..> User
+
+TmdbAdapter ..|> CatalogSource
+TmdbAdapter --> TmdbClient : адаптує
+TmdbAdapter ..> TitleData : створює
+CatalogImportService --> CatalogSource
+CatalogImportService --> TitleRepository
+CatalogImportService --> GenreRepository
+CatalogImportService --> CountryRepository
+TitleRepository ..> Title
+GenreRepository ..> Genre
+CountryRepository ..> Country
+
+Title "1" o-- "*" Genre
+Title "1" o-- "*" Country
+Title "1" *-- "*" Season
+Season "1" *-- "*" Episode
+
+@enduml
