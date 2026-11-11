@@ -36,6 +36,7 @@ docker compose up -d --build
 
 Під час старту backend автоматично застосовує міграції бази даних (`alembic upgrade head`).
 
+- **Вебзастосунок: http://localhost:3000**
 - API: http://localhost:8000/api/v1/health
 - Swagger UI: http://localhost:8000/docs
 - PostgreSQL: `localhost:5432` (користувач, пароль і база — з `.env`)
@@ -80,6 +81,17 @@ uvicorn app.main:app --reload
 ```
 
 Тести використовують SQLite у пам'яті й не потребують PostgreSQL: `pytest`.
+
+### Frontend локально (для розробки)
+
+Потрібен Node.js 22 LTS. Backend має працювати на `localhost:8000` (локально або через `docker compose up -d backend`).
+
+```bash
+cd frontend
+npm ci
+npm run dev          # http://localhost:5173, запити /api проксуються на backend
+npm run build        # перевірка типів і production-збірка
+```
 
 ## Статус
 
