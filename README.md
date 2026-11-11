@@ -25,7 +25,24 @@
 
 ## Запуск
 
-Інструкцію запуску буде додано разом з Docker Compose.
+Повну інструкцію запуску через Docker Compose буде додано пізніше.
+
+### Backend локально (для розробки)
+
+Потрібен Python 3.12.
+
+```bash
+cp .env.example .env
+cd backend
+python -m venv .venv
+.venv/Scripts/activate        # Windows (Git Bash); у Linux/macOS: source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
+```
+
+- API: http://localhost:8000/api/v1/health
+- Swagger UI: http://localhost:8000/docs
+- Тести: `pytest`
 
 ## Статус
 
