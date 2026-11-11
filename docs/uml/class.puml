@@ -89,13 +89,17 @@ package "services" {
       + get_movie(external_id) : TitleData
       + get_series(external_id, max_seasons) : TitleData
       + get_popular_ids(title_type, pages) : list[int]
+      + get_anime_ids(title_type, pages) : list[int]
     }
 
     class TmdbAdapter <<Adapter>> ADAPTER {
       - _client : TmdbClient
+      - _country_names : dict[str, str]
       + get_movie(external_id) : TitleData
       + get_series(external_id, max_seasons) : TitleData
       + get_popular_ids(title_type, pages) : list[int]
+      + get_anime_ids(title_type, pages) : list[int]
+      - _localized_texts(raw, title_key) : (str, str)
     }
 
     class TmdbClient <<Adaptee>> ADAPTER {
@@ -103,6 +107,8 @@ package "services" {
       + tv(id, language) : dict
       + tv_season(id, number, language) : dict
       + popular(media, page, language) : dict
+      + discover(media, page, language, filters) : dict
+      + countries(language) : list[dict]
     }
 
     class TitleData <<dataclass>> {
@@ -115,9 +121,12 @@ package "services" {
     }
 
     class CatalogImportService {
+      - _excluded_genre_ids : frozenset[int]
+      - _max_episodes : int
       + import_movies(ids) : ImportReport
       + import_series(ids, max_seasons) : ImportReport
       + import_popular(type, pages) : ImportReport
+      + import_anime(type, pages) : ImportReport
     }
   }
 }
