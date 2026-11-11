@@ -1,13 +1,11 @@
-from collections.abc import Iterator
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import create_engine, event, select, text
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Base,
     Episode,
     Genre,
     Season,
@@ -17,20 +15,6 @@ from app.models import (
     UserRole,
     VideoAsset,
 )
-
-
-@pytest.fixture
-def session() -> Iterator[Session]:
-    engine = create_engine("sqlite://")
-
-    @event.listens_for(engine, "connect")
-    def enable_foreign_keys(dbapi_connection, _record) -> None:  # noqa: ANN001
-        dbapi_connection.execute("PRAGMA foreign_keys=ON")
-
-    Base.metadata.create_all(engine)
-    with Session(engine) as db:
-        yield db
-    engine.dispose()
 
 
 def make_series(db: Session) -> Title:
