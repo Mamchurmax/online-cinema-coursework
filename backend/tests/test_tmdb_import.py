@@ -43,7 +43,11 @@ UNTRANSLATED_MOVIE_UK = {
     "genres": [{"id": 16, "name": "Мультфільм"}],
     "production_countries": [{"iso_3166_1": "NL", "name": "Netherlands"}],
 }
-UNTRANSLATED_MOVIE_EN = {**UNTRANSLATED_MOVIE_UK, "title": "Big Buck Bunny", "overview": "A giant rabbit."}
+UNTRANSLATED_MOVIE_EN = {
+    **UNTRANSLATED_MOVIE_UK,
+    "title": "Big Buck Bunny",
+    "overview": "A giant rabbit.",
+}
 
 SERIES_UK = {
     "id": 1399,
