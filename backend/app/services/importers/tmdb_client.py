@@ -50,5 +50,12 @@ class TmdbClient:
         """`media` is "movie" or "tv"."""
         return self.get(f"/{media}/popular", page=page, language=language)
 
+    def countries(self, language: str) -> list[Json]:
+        """All countries: `iso_3166_1`, `english_name` and `native_name` (in `language`)."""
+        response = self._http.get("/configuration/countries", params={"language": language})
+        if response.status_code != 200:
+            raise TmdbError(f"GET /configuration/countries -> HTTP {response.status_code}")
+        return response.json()
+
     def close(self) -> None:
         self._http.close()

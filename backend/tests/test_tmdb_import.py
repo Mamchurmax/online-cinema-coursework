@@ -81,6 +81,11 @@ SEASONS_UK = {
 
 POPULAR_MOVIES = {1: {"results": [{"id": 603}]}, 2: {"results": [{"id": 10378}]}}
 
+COUNTRIES_UK = [
+    {"iso_3166_1": "US", "english_name": "United States of America", "native_name": "США"},
+    {"iso_3166_1": "NL", "english_name": "Netherlands", "native_name": "Нідерланди"},
+]
+
 
 class FakeTmdb:
     """Serves canned TMDB responses and records every request."""
@@ -88,11 +93,14 @@ class FakeTmdb:
     def __init__(self) -> None:
         self.requests: list[httpx2.Request] = []
         self.overrides: dict[str, dict] = {}
+        self.failing: set[str] = set()
 
     def __call__(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         path = request.url.path.removeprefix("/3")
         language = request.url.params.get("language")
+        if path in self.failing:
+            return httpx2.Response(500, json={"status_message": "internal error"})
         if path in self.overrides:
             return httpx2.Response(200, json=self.overrides[path])
 
@@ -103,6 +111,7 @@ class FakeTmdb:
             "/tv/1399/season/1": SEASONS_UK[1],
             "/tv/1399/season/2": SEASONS_UK[2],
             "/movie/popular": POPULAR_MOVIES.get(int(request.url.params.get("page", 1))),
+            "/configuration/countries": COUNTRIES_UK if language == "uk-UA" else None,
         }
         body = routes.get(path)
         if body is None:
@@ -156,7 +165,7 @@ def test_adapter_converts_movie_to_domain_data(adapter: TmdbAdapter) -> None:
     assert movie.poster_url == "https://image.tmdb.org/t/p/w500/poster.jpg"
     assert movie.backdrop_url == "https://image.tmdb.org/t/p/w1280/backdrop.jpg"
     assert [g.name for g in movie.genres] == ["Бойовик", "Фантастика"]
-    assert [(c.code, c.name) for c in movie.countries] == [("US", "United States of America")]
+    assert [(c.code, c.name) for c in movie.countries] == [("US", "США")]
 
 
 def test_adapter_falls_back_to_english_without_translation(
@@ -167,7 +176,8 @@ def test_adapter_falls_back_to_english_without_translation(
     assert movie.title == "Big Buck Bunny"
     assert movie.description == "A giant rabbit."
     assert movie.poster_url is None
-    assert [r.url.params["language"] for r in fake_tmdb.requests] == ["uk-UA", "en-US"]
+    movie_requests = [r for r in fake_tmdb.requests if r.url.path.endswith("/movie/10378")]
+    assert [r.url.params["language"] for r in movie_requests] == ["uk-UA", "en-US"]
 
 
 def test_adapter_converts_series_and_skips_specials(adapter: TmdbAdapter) -> None:
@@ -180,7 +190,28 @@ def test_adapter_converts_series_and_skips_specials(adapter: TmdbAdapter) -> Non
     pilot, second = series.seasons[0].episodes
     assert (pilot.name, pilot.duration) == ("Зима близько", 62)
     assert (second.name, second.description) == ("Епізод 2", "")
-    assert [(c.code, c.name) for c in series.countries] == [("US", "US")]
+    # Only the code is in "origin_country"; the name comes from the localized list.
+    assert [(c.code, c.name) for c in series.countries] == [("US", "США")]
+
+
+def test_adapter_loads_country_names_once(adapter: TmdbAdapter, fake_tmdb: FakeTmdb) -> None:
+    adapter.get_movie(603)
+    adapter.get_movie(10378)
+    adapter.get_series(1399)
+
+    paths = [r.url.path for r in fake_tmdb.requests]
+    assert paths.count("/3/configuration/countries") == 1
+    assert [(c.code, c.name) for c in adapter.get_movie(10378).countries] == [("NL", "Нідерланди")]
+
+
+def test_adapter_keeps_english_country_names_if_list_fails(
+    adapter: TmdbAdapter, fake_tmdb: FakeTmdb
+) -> None:
+    fake_tmdb.failing.add("/configuration/countries")
+
+    movie = adapter.get_movie(603)
+
+    assert [(c.code, c.name) for c in movie.countries] == [("US", "United States of America")]
 
 
 def test_adapter_limits_seasons(adapter: TmdbAdapter, fake_tmdb: FakeTmdb) -> None:
@@ -235,12 +266,34 @@ def test_reimport_updates_in_place_without_duplicates(
 
 
 def test_country_name_is_not_replaced_by_bare_code(
-    service: CatalogImportService, session: Session
+    service: CatalogImportService, session: Session, fake_tmdb: FakeTmdb
 ) -> None:
+    fake_tmdb.failing.add("/configuration/countries")  # no localized names at all
     service.import_movies([603])  # US -> "United States of America"
     service.import_series([1399])  # only origin_country code "US"
 
     assert session.scalars(select(Country.name)).one() == "United States of America"
+
+
+def test_reimport_replaces_english_country_name_with_localized(
+    session: Session, fake_tmdb: FakeTmdb
+) -> None:
+    def import_matrix() -> None:
+        client = TmdbClient("test-token", transport=httpx2.MockTransport(fake_tmdb))
+        CatalogImportService(
+            TmdbAdapter(client),
+            TitleRepository(session),
+            GenreRepository(session),
+            CountryRepository(session),
+        ).import_movies([603])
+
+    fake_tmdb.failing.add("/configuration/countries")
+    import_matrix()
+    assert session.scalars(select(Country.name)).one() == "United States of America"
+
+    fake_tmdb.failing.clear()
+    import_matrix()  # a new adapter, as in a new run of the import script
+    assert session.scalars(select(Country.name)).one() == "США"
 
 
 def test_failed_title_does_not_stop_batch(service: CatalogImportService, session: Session) -> None:

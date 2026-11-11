@@ -10,6 +10,7 @@ Thanks to the adapter, the rest of the system knows nothing about TMDB; another
 metadata provider can be added by writing one more adapter.
 """
 
+import logging
 from collections.abc import Callable
 from decimal import Decimal
 
@@ -22,7 +23,9 @@ from app.services.importers.catalog_source import (
     SeasonData,
     TitleData,
 )
-from app.services.importers.tmdb_client import Json, TmdbClient
+from app.services.importers.tmdb_client import Json, TmdbClient, TmdbError
+
+logger = logging.getLogger(__name__)
 
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p"
 POSTER_SIZE = "w500"
@@ -39,6 +42,7 @@ class TmdbAdapter(CatalogSource):
 
     def __init__(self, client: TmdbClient) -> None:
         self._client = client
+        self._country_names: dict[str, str] | None = None  # ISO code -> localized name
 
     def get_movie(self, external_id: int) -> TitleData:
         raw = self._client.movie(external_id, PRIMARY_LANGUAGE)
@@ -144,12 +148,27 @@ class TmdbAdapter(CatalogSource):
     def _genres(raw: Json) -> list[GenreData]:
         return [GenreData(external_id=g["id"], name=g["name"]) for g in raw.get("genres", [])]
 
-    @staticmethod
-    def _countries(raw: Json) -> list[CountryData]:
-        countries = {
-            c["iso_3166_1"]: CountryData(code=c["iso_3166_1"], name=c["name"])
-            for c in raw.get("production_countries", [])
-        }
+    def _countries(self, raw: Json) -> list[CountryData]:
+        """Production and origin countries, named in the primary language when possible."""
+        names = {c["iso_3166_1"]: c["name"] for c in raw.get("production_countries", [])}
         for code in raw.get("origin_country", []):  # TMDB gives only codes here
-            countries.setdefault(code, CountryData(code=code, name=code))
-        return list(countries.values())
+            names.setdefault(code, code)
+
+        localized = self._localized_country_names()
+        return [
+            CountryData(code=code, name=localized.get(code) or name)
+            for code, name in names.items()
+        ]
+
+    def _localized_country_names(self) -> dict[str, str]:
+        """Loaded once per adapter: titles only carry English country names."""
+        if self._country_names is None:
+            try:
+                countries = self._client.countries(PRIMARY_LANGUAGE)
+                self._country_names = {
+                    c["iso_3166_1"]: c.get("native_name") or c["english_name"] for c in countries
+                }
+            except TmdbError as exc:  # names stay in English; the import itself goes on
+                logger.warning("Localized country names are unavailable: %s", exc)
+                self._country_names = {}
+        return self._country_names
