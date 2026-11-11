@@ -1,9 +1,11 @@
 """Data access for catalog entities: titles, genres, countries."""
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from collections.abc import Sequence
 
-from app.models import Country, Genre, Title
+from sqlalchemy import Select, select
+from sqlalchemy.orm import Session, selectinload
+
+from app.models import Country, Genre, Season, Title
 
 
 class TitleRepository:
@@ -15,6 +17,25 @@ class TitleRepository:
 
     def get_by_tmdb_id(self, tmdb_id: int) -> Title | None:
         return self._db.scalars(select(Title).where(Title.tmdb_id == tmdb_id)).one_or_none()
+
+    def get_with_details(self, title_id: int) -> Title | None:
+        """Title with genres, countries, seasons and episodes loaded in a few queries."""
+        statement = (
+            select(Title)
+            .where(Title.id == title_id)
+            .options(
+                selectinload(Title.genres),
+                selectinload(Title.countries),
+                selectinload(Title.seasons).selectinload(Season.episodes),
+            )
+        )
+        return self._db.scalars(statement).one_or_none()
+
+    def find_page(
+        self, statement: Select[tuple[Title]], count_statement: Select[tuple[int]]
+    ) -> tuple[Sequence[Title], int]:
+        """Run a prepared search (see `CatalogQueryBuilder`): one page and the total."""
+        return self._db.scalars(statement).all(), self._db.scalar(count_statement) or 0
 
     def add(self, title: Title) -> None:
         self._db.add(title)
@@ -36,6 +57,9 @@ class GenreRepository:
     def get_by_name(self, name: str) -> Genre | None:
         return self._db.scalars(select(Genre).where(Genre.name == name)).one_or_none()
 
+    def list_all(self) -> Sequence[Genre]:
+        return self._db.scalars(select(Genre).order_by(Genre.name)).all()
+
     def add(self, genre: Genre) -> None:
         self._db.add(genre)
         self._db.flush()
@@ -47,6 +71,9 @@ class CountryRepository:
 
     def get_by_code(self, code: str) -> Country | None:
         return self._db.scalars(select(Country).where(Country.code == code)).one_or_none()
+
+    def list_all(self) -> Sequence[Country]:
+        return self._db.scalars(select(Country).order_by(Country.name)).all()
 
     def add(self, country: Country) -> None:
         self._db.add(country)
