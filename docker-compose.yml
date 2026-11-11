@@ -7,6 +7,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cinema}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cinema}
       POSTGRES_DB: ${POSTGRES_DB:-cinema}
+      # Ukrainian collation (ICU): ORDER BY puts "І", "Є", "Ї", "Ґ" in alphabetical
+      # order instead of by code point. Applied only when the volume is first created.
+      POSTGRES_INITDB_ARGS: --locale-provider=icu --icu-locale=uk-UA
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:

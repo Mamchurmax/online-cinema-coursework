@@ -49,6 +49,9 @@ docker compose down              # зупинити (дані БД зберіг�
 docker compose down -v           # зупинити й видалити дані БД
 ```
 
+База створюється з українською ICU-колацією (`uk-UA`), тому сортування за назвою відповідає українському алфавіту.
+Якщо volume `pgdata` був створений до цієї зміни, пересоздайте його: `docker compose down -v`, `docker compose up -d`, а потім повторіть імпорт каталогу.
+
 ### Імпорт каталогу з TMDB
 
 1. Отримайте **API Read Access Token** на https://www.themoviedb.org/settings/api (потрібен безкоштовний акаунт TMDB).
