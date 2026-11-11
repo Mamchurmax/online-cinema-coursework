@@ -48,6 +48,22 @@ docker compose down              # зупинити (дані БД зберіг�
 docker compose down -v           # зупинити й видалити дані БД
 ```
 
+### Імпорт каталогу з TMDB
+
+1. Отримайте **API Read Access Token** на https://www.themoviedb.org/settings/api (потрібен безкоштовний акаунт TMDB).
+2. Впишіть його в `.env`: `TMDB_API_TOKEN=...`, після чого перезапустіть backend: `docker compose up -d backend`.
+3. Запустіть імпорт:
+
+```bash
+docker compose exec backend python -m scripts.import_tmdb                  # демо-фільми Blender + по 1 сторінці популярних фільмів і серіалів
+docker compose exec backend python -m scripts.import_tmdb --movies 603 680 # конкретні фільми за TMDB id
+docker compose exec backend python -m scripts.import_tmdb --series 1399 --max-seasons 1
+docker compose exec backend python -m scripts.import_tmdb --popular-movies 3 --popular-series 2
+```
+
+Повторний імпорт безпечний: наявні тайтли оновлюються за `tmdb_id`, дублікати не створюються.
+Метадані завантажуються українською, а якщо перекладу немає — англійською.
+
 ### Backend локально (для розробки)
 
 Потрібен Python 3.12. База даних — з Docker Compose:
