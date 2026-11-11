@@ -1,0 +1,144 @@
+' Diagram 1: client side (guest, user). Diagram 2: admin side.
+
+@startuml use-case-client
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #F5F9FF
+  BorderColor #3B6EA8
+}
+title Онлайн-кінотеатр — варіанти використання: клієнтська частина
+
+actor "Гість" as Guest
+actor "Користувач" as User
+actor "Планувальник" as Scheduler <<system>>
+actor "Платіжний провайдер\n(mock)" as PaymentProvider <<system>>
+
+Guest <|-- User
+
+rectangle "Онлайн-кінотеатр" {
+
+  package "Каталог" {
+    usecase "Переглянути каталог" as UC_Browse
+    usecase "Шукати й фільтрувати\n(жанр, рік, країна)" as UC_Search
+    usecase "Переглянути сторінку\nфільму / серіалу" as UC_TitlePage
+  }
+
+  package "Обліковий запис" {
+    usecase "Зареєструватися" as UC_Register
+    usecase "Увійти" as UC_Login
+    usecase "Редагувати профіль" as UC_Profile
+    usecase "Переглянути сповіщення" as UC_Notifications
+  }
+
+  package "Перегляд" {
+    usecase "Дивитися фільм / епізод" as UC_Watch
+    usecase "Перевірити доступ\nза тарифом" as UC_CheckAccess
+    usecase "Обрати якість відео" as UC_Quality
+    usecase "Переглянути рекламу\n(pre-roll)" as UC_Ad
+    usecase "Зберегти прогрес перегляду" as UC_Progress
+  }
+
+  package "Персоналізація" {
+    usecase "Керувати «Вибраним»" as UC_Favorites
+    usecase "Отримати рекомендації" as UC_Recommendations
+    usecase "Переглянути історію переглядів" as UC_History
+  }
+
+  package "Підписки" {
+    usecase "Оформити підписку Premium" as UC_Subscribe
+    usecase "Оплатити підписку" as UC_Pay
+    usecase "Повідомити про завершення\nпідписки" as UC_Expiring
+  }
+}
+
+Guest --> UC_Browse
+Guest --> UC_Search
+Guest --> UC_TitlePage
+Guest --> UC_Register
+Guest --> UC_Login
+
+User --> UC_Profile
+User --> UC_Notifications
+User --> UC_Watch
+User --> UC_Favorites
+User --> UC_Recommendations
+User --> UC_History
+User --> UC_Subscribe
+
+UC_Watch ..> UC_CheckAccess : <<include>>
+UC_Watch ..> UC_Progress : <<include>>
+UC_Quality ..> UC_Watch : <<extend>>
+UC_Ad ..> UC_Watch : <<extend>>\n[тариф Free]
+
+UC_Subscribe ..> UC_Pay : <<include>>
+UC_Pay --> PaymentProvider
+UC_Expiring <-- Scheduler
+
+@enduml
+
+@startuml use-case-admin
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #F5F9FF
+  BorderColor #3B6EA8
+}
+title Онлайн-кінотеатр — варіанти використання: адмін-частина
+
+actor "Користувач" as User2
+actor "Адміністратор" as Admin
+actor "TMDB API" as Tmdb <<system>>
+actor "Платіжний провайдер\n(mock)" as PaymentProvider2 <<system>>
+
+User2 <|-- Admin
+
+rectangle "Онлайн-кінотеатр: адмін-панель" {
+
+  package "Вміст" {
+    usecase "Керувати фільмами й серіалами" as UC_ManageTitles
+    usecase "Імпортувати метадані з TMDB" as UC_ImportTmdb
+    usecase "Керувати сезонами й епізодами" as UC_ManageEpisodes
+    usecase "Керувати відео" as UC_ManageVideo
+    usecase "Керувати рекламою" as UC_ManageAds
+  }
+
+  package "Налаштування й користувачі" {
+    usecase "Керувати тарифами" as UC_ManagePlans
+    usecase "Керувати користувачами" as UC_ManageUsers
+    usecase "Підтвердити платіж\nу статусі pending" as UC_ResolvePayment
+  }
+
+  package "Звіти" {
+    usecase "Переглянути звіти" as UC_Reports
+    usecase "Звіт про популярність\nфільмів і жанрів" as UC_ReportPopularity
+    usecase "Звіт про активність\nкористувачів" as UC_ReportActivity
+    usecase "Звіт про дохід\nвід підписок" as UC_ReportRevenue
+  }
+}
+
+Admin --> UC_ManageTitles
+Admin --> UC_ManageEpisodes
+Admin --> UC_ManageVideo
+Admin --> UC_ManageAds
+Admin --> UC_ManagePlans
+Admin --> UC_ManageUsers
+Admin --> UC_ResolvePayment
+Admin --> UC_Reports
+
+UC_ImportTmdb ..> UC_ManageTitles : <<extend>>
+UC_ImportTmdb --> Tmdb
+UC_ResolvePayment --> PaymentProvider2
+
+UC_Reports <|-- UC_ReportPopularity
+UC_Reports <|-- UC_ReportActivity
+UC_Reports <|-- UC_ReportRevenue
+
+note right of User2
+  Адміністратор успадковує всі варіанти
+  використання Користувача (діаграма 1).
+end note
+
+@enduml
