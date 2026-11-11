@@ -11,6 +11,7 @@ metadata provider can be added by writing one more adapter.
 """
 
 import logging
+import re
 from collections.abc import Callable
 from decimal import Decimal
 
@@ -34,7 +35,14 @@ BACKDROP_SIZE = "w1280"
 PRIMARY_LANGUAGE = "uk-UA"
 FALLBACK_LANGUAGE = "en-US"
 
+TMDB_ANIMATION_GENRE_ID = 16
+# TV genres that do not belong in a cinema catalog: News, Reality, Soap, Talk.
+TMDB_NON_CINEMA_GENRE_IDS = frozenset({10763, 10764, 10766, 10767})
+
 _MEDIA_BY_TYPE = {TitleType.MOVIE: "movie", TitleType.SERIES: "tv"}
+
+# TMDB fills untranslated episode names with "Серія 5" / "Episode 5".
+_PLACEHOLDER_EPISODE_NAME = re.compile(r"^(Серія|Епізод|Episode)\s+\d+$", re.IGNORECASE)
 
 
 class TmdbAdapter(CatalogSource):
@@ -46,15 +54,13 @@ class TmdbAdapter(CatalogSource):
 
     def get_movie(self, external_id: int) -> TitleData:
         raw = self._client.movie(external_id, PRIMARY_LANGUAGE)
-        fallback = self._fallback_if_untranslated(
-            raw, lambda: self._client.movie(external_id, FALLBACK_LANGUAGE)
-        )
+        title, description = self._localized_texts(raw, "title")
 
         return TitleData(
             external_id=raw["id"],
             type=TitleType.MOVIE,
-            title=self._text(raw, fallback, "title"),
-            description=self._text(raw, fallback, "overview"),
+            title=title,
+            description=description,
             release_year=self._year(raw.get("release_date")),
             rating=self._rating(raw.get("vote_average")),
             poster_url=self._image(raw.get("poster_path"), POSTER_SIZE),
@@ -66,9 +72,7 @@ class TmdbAdapter(CatalogSource):
 
     def get_series(self, external_id: int, max_seasons: int | None = None) -> TitleData:
         raw = self._client.tv(external_id, PRIMARY_LANGUAGE)
-        fallback = self._fallback_if_untranslated(
-            raw, lambda: self._client.tv(external_id, FALLBACK_LANGUAGE)
-        )
+        title, description = self._localized_texts(raw, "name")
 
         season_numbers = sorted(
             s["season_number"] for s in raw.get("seasons", []) if s.get("season_number", 0) > 0
@@ -80,8 +84,8 @@ class TmdbAdapter(CatalogSource):
         return TitleData(
             external_id=raw["id"],
             type=TitleType.SERIES,
-            title=self._text(raw, fallback, "name"),
-            description=self._text(raw, fallback, "overview"),
+            title=title,
+            description=description,
             release_year=self._year(raw.get("first_air_date")),
             rating=self._rating(raw.get("vote_average")),
             poster_url=self._image(raw.get("poster_path"), POSTER_SIZE),
@@ -94,41 +98,75 @@ class TmdbAdapter(CatalogSource):
 
     def get_popular_ids(self, title_type: TitleType, pages: int = 1) -> list[int]:
         media = _MEDIA_BY_TYPE[title_type]
-        ids: list[int] = []
-        for page in range(1, pages + 1):
-            results = self._client.popular(media, page, PRIMARY_LANGUAGE)["results"]
-            ids.extend(item["id"] for item in results)
-        return ids
+        return _collect_ids(lambda page: self._client.popular(media, page, PRIMARY_LANGUAGE), pages)
+
+    def get_anime_ids(self, title_type: TitleType, pages: int = 1) -> list[int]:
+        """Most popular Japanese animation."""
+        media = _MEDIA_BY_TYPE[title_type]
+        return _collect_ids(
+            lambda page: self._client.discover(
+                media,
+                page,
+                PRIMARY_LANGUAGE,
+                with_genres=TMDB_ANIMATION_GENRE_ID,
+                with_original_language="ja",
+            ),
+            pages,
+        )
 
     # --- conversion helpers -------------------------------------------------
 
+    @staticmethod
+    def _localized_texts(raw: Json, title_key: str) -> tuple[str, str]:
+        """Title and description: Ukrainian if translated, otherwise English, otherwise original.
+
+        Without a Ukrainian translation TMDB returns the *original* title (Japanese,
+        Hindi, ...) and an empty overview, so the English translation is used instead.
+        """
+        translations = raw.get("translations", {}).get("translations", [])
+        uk = _translation(translations, "uk")
+        en = _translation(translations, "en", preferred_country="US")
+        original_is_ukrainian = raw.get("original_language") == "uk"
+
+        title = _first_text(
+            [
+                uk.get(title_key),
+                raw.get(title_key) if original_is_ukrainian else None,
+                en.get(title_key),
+                raw.get(title_key),
+            ]
+        )
+        description = _first_text([uk.get("overview"), raw.get("overview"), en.get("overview")])
+        return title, description
+
     def _season(self, tv_id: int, number: int) -> SeasonData:
         raw = self._client.tv_season(tv_id, number, PRIMARY_LANGUAGE)
+        episodes = raw.get("episodes", [])
+
+        # Untranslated episodes come as "Серія 5" with no overview: load English once.
+        english: dict[int, Json] = {}
+        if any(_is_placeholder(ep.get("name")) or not ep.get("overview") for ep in episodes):
+            english_raw = self._client.tv_season(tv_id, number, FALLBACK_LANGUAGE)
+            english = {ep["episode_number"]: ep for ep in english_raw.get("episodes", [])}
+
         return SeasonData(
             number=number,
             name=raw.get("name") or f"Сезон {number}",
-            episodes=[
-                EpisodeData(
-                    number=ep["episode_number"],
-                    name=ep.get("name") or f"Епізод {ep['episode_number']}",
-                    description=ep.get("overview") or "",
-                    duration=ep.get("runtime") or None,
-                )
-                for ep in raw.get("episodes", [])
-            ],
+            episodes=[self._episode(ep, english.get(ep["episode_number"], {})) for ep in episodes],
         )
 
     @staticmethod
-    def _fallback_if_untranslated(raw: Json, load_fallback: Callable[[], Json]) -> Json | None:
-        """TMDB returns an empty overview when there is no Ukrainian translation."""
-        return None if raw.get("overview") else load_fallback()
-
-    @staticmethod
-    def _text(raw: Json, fallback: Json | None, key: str) -> str:
-        value = raw.get(key) or ""
-        if not value and fallback is not None:
-            value = fallback.get(key) or ""
-        return value.strip()
+    def _episode(raw: Json, english: Json) -> EpisodeData:
+        number = raw["episode_number"]
+        name = raw.get("name")
+        if _is_placeholder(name) and not _is_placeholder(english.get("name")):
+            name = english["name"]
+        return EpisodeData(
+            number=number,
+            name=_first_text([name]) or f"Епізод {number}",
+            description=_first_text([raw.get("overview"), english.get("overview")]),
+            duration=raw.get("runtime") or None,
+        )
 
     @staticmethod
     def _year(date: str | None) -> int | None:
@@ -172,3 +210,25 @@ class TmdbAdapter(CatalogSource):
                 logger.warning("Localized country names are unavailable: %s", exc)
                 self._country_names = {}
         return self._country_names
+
+
+def _collect_ids(load_page: Callable[[int], Json], pages: int) -> list[int]:
+    ids: list[int] = []
+    for page in range(1, pages + 1):
+        ids.extend(item["id"] for item in load_page(page)["results"])
+    return ids
+
+
+def _translation(translations: list[Json], language: str, preferred_country: str = "") -> Json:
+    """`data` of the translation into `language` (e.g. "uk"), or an empty dict."""
+    matching = [t for t in translations if t.get("iso_639_1") == language]
+    matching.sort(key=lambda t: t.get("iso_3166_1") != preferred_country)
+    return matching[0].get("data", {}) if matching else {}
+
+
+def _first_text(candidates: list[str | None]) -> str:
+    return next((c.strip() for c in candidates if c and c.strip()), "")
+
+
+def _is_placeholder(name: str | None) -> bool:
+    return not name or bool(_PLACEHOLDER_EPISODE_NAME.match(name.strip()))

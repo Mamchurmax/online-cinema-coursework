@@ -38,10 +38,23 @@ class TmdbClient:
         return response.json()
 
     def movie(self, movie_id: int, language: str) -> Json:
-        return self.get(f"/movie/{movie_id}", language=language)
+        """Movie details plus all its translations (`translations.translations`)."""
+        return self.get(f"/movie/{movie_id}", language=language, append_to_response="translations")
 
     def tv(self, tv_id: int, language: str) -> Json:
-        return self.get(f"/tv/{tv_id}", language=language)
+        """Series details plus all its translations (`translations.translations`)."""
+        return self.get(f"/tv/{tv_id}", language=language, append_to_response="translations")
+
+    def discover(self, media: str, page: int, language: str, **filters: Any) -> Json:
+        """Most popular titles matching filters, e.g. `with_genres=16`."""
+        return self.get(
+            f"/discover/{media}",
+            page=page,
+            language=language,
+            sort_by="popularity.desc",
+            include_adult="false",
+            **filters,
+        )
 
     def tv_season(self, tv_id: int, season_number: int, language: str) -> Json:
         return self.get(f"/tv/{tv_id}/season/{season_number}", language=language)

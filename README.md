@@ -63,10 +63,12 @@ docker compose exec backend python -m scripts.import_tmdb                  # д�
 docker compose exec backend python -m scripts.import_tmdb --movies 603 680 # конкретні фільми за TMDB id
 docker compose exec backend python -m scripts.import_tmdb --series 1399 --max-seasons 1
 docker compose exec backend python -m scripts.import_tmdb --popular-movies 3 --popular-series 2
+docker compose exec backend python -m scripts.import_tmdb --anime-movies 1 --anime-series 2 --no-demo   # популярне японське аніме
 ```
 
 Повторний імпорт безпечний: наявні тайтли оновлюються за `tmdb_id`, дублікати не створюються.
-Метадані завантажуються українською, а якщо перекладу немає — англійською.
+Метадані завантажуються українською, а якщо перекладу немає — англійською (назви, описи, назви епізодів).
+Ток-шоу, мильні опери, новини й реаліті-шоу пропускаються; для довгих серіалів зберігається до 100 епізодів на сезон (`--max-episodes`).
 
 ### Backend локально (для розробки)
 

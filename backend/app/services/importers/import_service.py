@@ -25,10 +25,17 @@ class ImportReport:
     created: list[str] = field(default_factory=list)
     updated: list[str] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
+    skipped: list[str] = field(default_factory=list)
 
 
 class CatalogImportService:
-    """Creates or updates titles by their external (TMDB) id, so re-import is safe."""
+    """Creates or updates titles by their external (TMDB) id, so re-import is safe.
+
+    Catalog rules applied on import:
+    - titles with any of `excluded_genre_ids` (talk shows, soaps, ...) are skipped;
+    - at most `max_episodes_per_season` episodes are kept per season, so long-running
+      daily series do not flood the catalog with thousands of episodes.
+    """
 
     def __init__(
         self,
@@ -36,11 +43,16 @@ class CatalogImportService:
         titles: TitleRepository,
         genres: GenreRepository,
         countries: CountryRepository,
+        *,
+        excluded_genre_ids: frozenset[int] = frozenset(),
+        max_episodes_per_season: int | None = None,
     ) -> None:
         self._source = source
         self._titles = titles
         self._genres = genres
         self._countries = countries
+        self._excluded_genre_ids = excluded_genre_ids
+        self._max_episodes = max_episodes_per_season
 
     def import_movies(
         self, external_ids: list[int], report: ImportReport | None = None
@@ -75,6 +87,25 @@ class CatalogImportService:
         report: ImportReport | None = None,
     ) -> ImportReport:
         ids = self._source.get_popular_ids(title_type, pages)
+        return self._import_ids(title_type, ids, max_seasons, report)
+
+    def import_anime(
+        self,
+        title_type: TitleType,
+        pages: int,
+        max_seasons: int | None = None,
+        report: ImportReport | None = None,
+    ) -> ImportReport:
+        ids = self._source.get_anime_ids(title_type, pages)
+        return self._import_ids(title_type, ids, max_seasons, report)
+
+    def _import_ids(
+        self,
+        title_type: TitleType,
+        ids: list[int],
+        max_seasons: int | None,
+        report: ImportReport | None,
+    ) -> ImportReport:
         if title_type is TitleType.MOVIE:
             return self.import_movies(ids, report)
         return self.import_series(ids, max_seasons, report)
@@ -86,6 +117,10 @@ class CatalogImportService:
     ) -> None:
         try:
             data = fetch()
+            excluded = [g.name for g in data.genres if g.external_id in self._excluded_genre_ids]
+            if excluded:
+                report.skipped.append(f"{data.title}: {', '.join(excluded)}")
+                return
             created = self._upsert(data)
             self._titles.commit()
         except Exception as exc:  # one broken title must not stop a batch import
@@ -131,7 +166,7 @@ class CatalogImportService:
             season.name = season_data.name
 
             existing_episodes = {e.number: e for e in season.episodes}
-            for ep in season_data.episodes:
+            for ep in season_data.episodes[: self._max_episodes]:
                 episode = existing_episodes.get(ep.number)
                 if episode is None:
                     episode = Episode(number=ep.number, name=ep.name)
