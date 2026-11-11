@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://cinema:cinema@localhost:5432/cinema"
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # Must be overridden in .env for any shared deployment.
+    jwt_secret_key: str = "dev-only-secret-change-me-in-env-0123456789"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
     tmdb_api_token: str = ""
 
     _instance: ClassVar[Self | None] = None
