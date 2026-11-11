@@ -37,6 +37,7 @@ cd backend
 python -m venv .venv
 .venv/Scripts/activate        # Windows (Git Bash); у Linux/macOS: source .venv/bin/activate
 pip install -r requirements-dev.txt
+alembic upgrade head          # потрібен запущений PostgreSQL (DATABASE_URL у .env)
 uvicorn app.main:app --reload
 ```
 
