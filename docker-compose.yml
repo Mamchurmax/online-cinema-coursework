@@ -28,6 +28,10 @@ services:
     environment:
       # Inside the Compose network the database host is "db", not localhost.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cinema}:${POSTGRES_PASSWORD:-cinema}@db:5432/${POSTGRES_DB:-cinema}
+      MEDIA_ROOT: /media
+    volumes:
+      # Source videos and generated HLS files (not in git, see .gitignore).
+      - ./media:/media
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

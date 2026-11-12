@@ -70,6 +70,36 @@ docker compose exec backend python -m scripts.import_tmdb --anime-movies 1 --ani
 Метадані завантажуються українською, а якщо перекладу немає — англійською (назви, описи, назви епізодів).
 Ток-шоу, мильні опери, новини й реаліті-шоу пропускаються; для довгих серіалів зберігається до 100 епізодів на сезон (`--max-episodes`).
 
+### Демо-відео (HLS)
+
+Для перегляду використовуються відкриті фільми Blender Foundation (ліцензія CC BY):
+Big Buck Bunny, Sintel, Tears of Steel, Elephants Dream. Відео не зберігаються в git: їх
+треба завантажити й перекодувати один раз (~2,7 ГБ, конвертація займає 20–40 хв).
+
+1. Завантажте файли в `media/source/` з https://download.blender.org:
+   - `peach/bigbuckbunny_movies/big_buck_bunny_1080p_h264.mov.zip` (розпакуйте)
+   - `durian/movies/Sintel.2010.1080p.mkv`
+   - `demo/movies/ToS/tears_of_steel_1080p.mov.zip` (розпакуйте)
+   - `ED/elephantsdream-1024-h264-st-aac.mov`
+2. Перекодуйте в HLS (ffmpeg уже є в образі backend):
+
+```bash
+docker compose run --rm backend bash scripts/transcode.sh /media/source/big_buck_bunny_1080p_h264.mov /media/hls/big-buck-bunny
+docker compose run --rm backend bash scripts/transcode.sh /media/source/Sintel.2010.1080p.mkv /media/hls/sintel
+docker compose run --rm backend bash scripts/transcode.sh /media/source/tears_of_steel_1080p.mov /media/hls/tears-of-steel
+docker compose run --rm backend bash scripts/transcode.sh /media/source/elephantsdream-1024-h264-st-aac.mov /media/hls/elephants-dream
+docker compose run --rm backend bash scripts/make_ad.sh /media/hls/ads/demo
+```
+
+3. Прив'яжіть відео до тайтлів (після імпорту каталогу з TMDB):
+
+```bash
+docker compose exec backend python -m scripts.register_videos
+```
+
+`transcode.sh` робить якості 360p / 720p / 1080p (лише ті, що не перевищують оригінал) і
+master-плейлист `master.m3u8`; `make_ad.sh` генерує 10-секундний рекламний ролик.
+
 ### Backend локально (для розробки)
 
 Потрібен Python 3.12. База даних — з Docker Compose:

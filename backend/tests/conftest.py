@@ -1,6 +1,7 @@
 """Shared fixtures: an isolated in-memory SQLite database per test."""
 
 import os
+import tempfile
 
 # Tests must not depend on the developer's .env: environment variables take
 # priority over it, and they are set before `Settings` is first created.
@@ -9,6 +10,7 @@ os.environ.update(
         "JWT_SECRET_KEY": "test-only-secret-key-that-is-at-least-32-bytes-long",
         "TMDB_API_TOKEN": "",
         "DEBUG": "false",
+        "MEDIA_ROOT": tempfile.mkdtemp(prefix="cinema-media-"),
     }
 )
 

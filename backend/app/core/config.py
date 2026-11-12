@@ -7,6 +7,7 @@ by every layer (API, services, repositories). FastAPI code receives it through
 the `get_settings` dependency, so tests can override it.
 """
 
+from pathlib import Path
 from typing import ClassVar, Self
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +36,15 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
 
     tmdb_api_token: str = ""
+
+    # Videos: MEDIA_ROOT/source holds originals, MEDIA_ROOT/hls the streams.
+    # The default fits a local run from `backend/`; Docker sets MEDIA_ROOT=/media.
+    media_root: Path = Path("../media")
+    media_url: str = "/media/hls"
+
+    @property
+    def hls_root(self) -> Path:
+        return self.media_root / "hls"
 
     _instance: ClassVar[Self | None] = None
 
