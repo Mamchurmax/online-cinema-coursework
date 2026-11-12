@@ -10,6 +10,7 @@ title Онлайн-кінотеатр — діаграма класів (реа�
 !define OBSERVER #FFDCC2
 !define FACTORY #C9EEF2
 !define STATE #E2EFC4
+!define TEMPLATE #FFF3A8
 
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
@@ -29,6 +30,7 @@ legend top right
   | <back:OBSERVER>      </back> | Observer |
   | <back:FACTORY>      </back> | Factory Method |
   | <back:STATE>      </back> | State |
+  | <back:TEMPLATE>      </back> | Template Method |
 endlegend
 
 package "core" {
@@ -74,6 +76,10 @@ package "api.v1" {
     + pay(plan_code, scenario) : PaymentRead
     + simulate_bank_response(payment_id, approved) : PaymentRead
     + resolve_payment(payment_id, approved) : PaymentRead
+  }
+  class ReportsRouter <<router>> {
+    + list_reports() : list[ReportInfo]
+    + build_report(code, date_from, date_to) : ReportRead
   }
   class PlaybackRouter <<router>> {
     + start_title(title_id) : PlaybackInfo
@@ -251,6 +257,52 @@ package "services" {
     }
   }
 
+  package "reports" {
+    class ReportService {
+      - _reports : dict[str, type[BaseReport]]
+      + available() : list[type[BaseReport]]
+      + period(date_from, date_to) : ReportPeriod
+      + build(code, date_from, date_to) : ReportResult
+    }
+    abstract class "BaseReport[RawT, DataT]" as BaseReport <<AbstractClass>> TEMPLATE {
+      + {static} code : str
+      + {static} title : str
+      # _repository : ReportRepository
+      + build(period) : ReportResult <<final, template method>>
+      # {abstract} collect(period) : RawT
+      # {abstract} aggregate(raw, period) : DataT
+      # {abstract} format(data, period) : ReportBody
+      # notes(data) : list[str] <<hook>>
+    }
+    class PopularityReport <<ConcreteClass>> TEMPLATE {
+      # collect / aggregate / format
+      # notes(data)
+    }
+    class ActivityReport <<ConcreteClass>> TEMPLATE {
+      # collect / aggregate / format
+      # notes(data)
+    }
+    class RevenueReport <<ConcreteClass>> TEMPLATE {
+      # collect / aggregate / format
+      # notes(data)
+    }
+    class ReportPeriod <<value>> {
+      + start : date
+      + end : date
+      + by_month : bool
+      + buckets() : list[date]
+      + bucket_of(moment) : date
+    }
+    class ReportResult <<value>> {
+      + code : str
+      + period : ReportPeriod
+      + metrics : list[Metric]
+      + charts : list[Chart]
+      + table : Table
+      + notes : list[str]
+    }
+  }
+
   package "favorites" {
     class FavoriteService {
       + add(user, title_id)
@@ -390,6 +442,12 @@ package "repositories" {
     + viewing_signals(user_id) : list[ViewingSignal]
     + titles_with_genres(genre_ids, exclude, limit) : list[Title]
     + popular_titles(exclude, limit) : list[Title]
+  }
+  class ReportRepository {
+    + watch_rows(start, end) : list[WatchRow]
+    + registrations(start, end) : list[datetime]
+    + payments(start, end) : list[PaymentRow]
+    + active_subscriptions_by_plan(at) : dict[str, int]
   }
   class WatchHistoryRepository {
     + get(user_id, asset_id) : WatchHistory
@@ -533,6 +591,18 @@ HybridStrategy o--> "*" RecommendationStrategy : зважує результат
 GenreBasedStrategy --> RecommendationRepository
 PopularityStrategy --> RecommendationRepository
 RecommendationService --> RecommendationRepository
+
+ReportsRouter --> ReportService
+ReportService ..> BaseReport : створює за кодом, викликає build()
+PopularityReport --|> BaseReport
+ActivityReport --|> BaseReport
+RevenueReport --|> BaseReport
+BaseReport --> ReportRepository : collect()
+BaseReport ..> ReportResult : повертає
+ReportResult *-- ReportPeriod
+ReportRepository ..> WatchHistory
+ReportRepository ..> Payment
+ReportRepository ..> Subscription
 
 AdminRouter --> CatalogAdminService
 AdminRouter --> AccountsAdminService
