@@ -45,5 +45,17 @@ services:
     depends_on:
       - backend
 
+  # Database browser for screenshots and debugging; starts only with the "tools" profile:
+  #   docker compose --profile tools up -d adminer  ->  http://localhost:8080
+  adminer:
+    image: adminer:5.3.0
+    profiles: ["tools"]
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - db
+
 volumes:
   pgdata:
