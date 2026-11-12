@@ -10,6 +10,7 @@ const SECTIONS = [
   { to: "/admin/plans", label: "Тарифи" },
   { to: "/admin/users", label: "Користувачі" },
   { to: "/admin/ads", label: "Реклама" },
+  { to: "/admin/reports", label: "Звіти" },
 ];
 
 /** Admin area: only users with the `admin` role get past this (the API checks it too). */

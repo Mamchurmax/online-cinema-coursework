@@ -45,6 +45,7 @@ export const router = createBrowserRouter([
           { path: "plans", lazy: admin("AdminPlansPage") },
           { path: "users", lazy: admin("AdminUsersPage") },
           { path: "ads", lazy: admin("AdminAdsPage") },
+          { path: "reports", lazy: admin("AdminReportsPage") },
         ],
       },
       { path: "login", element: <AuthPage mode="login" /> },

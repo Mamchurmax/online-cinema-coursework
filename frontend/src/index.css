@@ -1573,3 +1573,101 @@ code {
   font-size: 0.7rem;
   vertical-align: middle;
 }
+
+/* --- admin reports ------------------------------------------------------------ */
+
+.reports__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.reports__date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reports__date .input {
+  width: auto;
+  color-scheme: dark;
+}
+
+.reports {
+  display: grid;
+  gap: 20px;
+  transition: opacity 0.15s;
+}
+
+.reports--stale {
+  opacity: 0.6;
+}
+
+.reports__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.reports__metric {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
+.reports__metric strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.reports__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+}
+
+.reports__chart {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.reports__chart--hbar {
+  grid-column: 1 / -1;
+}
+
+.reports__chart-title {
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.reports__empty {
+  display: grid;
+  place-items: center;
+  height: 200px;
+  margin: 0;
+}
+
+.table__number {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.reports__notes {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.85rem;
+}
+
+.reports__generated {
+  margin: 0;
+  font-size: 0.8rem;
+}

@@ -63,6 +63,39 @@ export interface PendingPayment {
   user_email: string;
 }
 
+export type ReportCell = string | number;
+export type ValueFormat = "number" | "money" | "percent" | "hours";
+
+export interface ReportInfo {
+  code: string;
+  title: string;
+  description: string;
+}
+
+export interface ReportChart {
+  key: string;
+  title: string;
+  kind: "bar" | "hbar" | "line" | "pie";
+  x_key: string;
+  series: { key: string; label: string }[];
+  data: Record<string, ReportCell>[];
+}
+
+export interface Report {
+  code: string;
+  title: string;
+  period: { start: string; end: string };
+  generated_at: string;
+  metrics: { key: string; label: string; value: number; format: ValueFormat }[];
+  charts: ReportChart[];
+  table: {
+    title: string;
+    columns: { key: string; label: string; format: ValueFormat | "text" }[];
+    rows: Record<string, ReportCell>[];
+  } | null;
+  notes: string[];
+}
+
 export type PlanInput = Pick<Plan, "name" | "price" | "period_days" | "max_quality" | "has_ads">;
 
 export const adminApi = {
@@ -109,6 +142,10 @@ export const adminApi = {
   pendingPayments: () => apiGet<PendingPayment[]>("/admin/payments/pending"),
   resolvePayment: (id: number, approved: boolean) =>
     apiRequest<unknown>("POST", `/admin/payments/${id}/resolve`, { json: { approved } }),
+
+  reports: () => apiGet<ReportInfo[]>("/admin/reports"),
+  report: (code: string, dateFrom: string, dateTo: string) =>
+    apiGet<Report>(`/admin/reports/${code}`, { date_from: dateFrom, date_to: dateTo }),
 };
 
 /** Human-readable text of an API error for admin forms. */
