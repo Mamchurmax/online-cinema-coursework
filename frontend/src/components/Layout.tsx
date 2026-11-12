@@ -34,6 +34,11 @@ export function Layout() {
             <NavLink to="/plans" className="nav__link">
               Тарифи
             </NavLink>
+            {user?.role === "admin" && (
+              <NavLink to="/admin" className="nav__link nav__link--admin">
+                Адмінка
+              </NavLink>
+            )}
           </nav>
           <UserMenu />
         </div>

@@ -1369,3 +1369,207 @@ a {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* Admin panel */
+.nav__link--admin {
+  color: var(--warn);
+}
+
+.admin__header {
+  margin-bottom: 20px;
+}
+
+.admin__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin__tab {
+  padding: 8px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.admin__tab.active {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.admin__section {
+  display: grid;
+  gap: 16px;
+}
+
+.admin__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin__toolbar h3 {
+  margin: 0;
+}
+
+.admin__search {
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.admin__inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin__inline-form .input {
+  width: auto;
+  min-width: 160px;
+}
+
+.admin__narrow {
+  width: 140px !important;
+  min-width: 0 !important;
+}
+
+.table__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.admin-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.admin-form .field {
+  flex: none;
+}
+
+.admin-form__wide {
+  grid-column: span 2;
+}
+
+.admin-form__full {
+  grid-column: 1 / -1;
+}
+
+.admin-form--compact {
+  grid-template-columns: 1fr;
+}
+
+.admin-form__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.admin-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.admin-card h3 {
+  margin: 0;
+}
+
+.admin-season {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.admin-season summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-episodes {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-episode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+@media (max-width: 720px) {
+  .admin-form__wide {
+    grid-column: 1 / -1;
+  }
+
+  .table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+.watch__episode {
+  margin: 0;
+}
+
+.episode__play {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
