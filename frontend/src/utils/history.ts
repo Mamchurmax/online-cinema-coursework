@@ -1,8 +1,8 @@
 import type { HistoryEntry } from "../api/types";
 
-/** Where a history item leads: movies open the player, episodes the series page. */
+/** Where a history item leads: straight back into the player (movie or episode). */
 export function historyLink(entry: HistoryEntry): string {
-  return entry.episode ? `/titles/${entry.title_id}` : `/watch/${entry.title_id}`;
+  return entry.episode ? `/watch/${entry.title_id}?episode=${entry.episode.id}` : `/watch/${entry.title_id}`;
 }
 
 export function minutesLeft(entry: HistoryEntry): string {

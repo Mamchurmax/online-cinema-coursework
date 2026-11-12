@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, Navigate, useLocation, useParams } from "react-router";
+import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router";
 
 import { ApiError } from "../api/client";
 import { playbackApi } from "../api/playback";
@@ -10,26 +10,31 @@ import { useTitle } from "../hooks/useCatalog";
 
 export function WatchPage() {
   const titleId = Number(useParams().titleId);
+  const episodeId = Number(useSearchParams()[0].get("episode")) || null; // series: ?episode=ID
   const { user, isLoading: authLoading } = useAuth();
   const location = useLocation();
   const title = useTitle(titleId);
+  const episode = title.data?.seasons
+    .flatMap((season) => season.episodes.map((e) => ({ ...e, season: season.number })))
+    .find((e) => e.id === episodeId);
 
   const playback = useQuery({
-    queryKey: ["playback", "title", titleId, user?.id],
-    queryFn: ({ signal }) => playbackApi.startTitle(titleId, signal),
+    queryKey: ["playback", episodeId ? "episode" : "title", episodeId ?? titleId, user?.id],
+    queryFn: ({ signal }) =>
+      episodeId ? playbackApi.startEpisode(episodeId, signal) : playbackApi.startTitle(titleId, signal),
     enabled: Boolean(user) && Number.isInteger(titleId),
     staleTime: 0,
     gcTime: 0, // a new session (and possibly a new ad) every time the page opens
   });
 
   if (!authLoading && !user) {
-    const next = encodeURIComponent(location.pathname);
+    const next = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?next=${next}`} replace />;
   }
 
   const back = (
     <Link to={`/titles/${titleId}`} className="back-link">
-      ← До сторінки фільму
+      ← {episodeId ? "До серіалу" : "До сторінки фільму"}
     </Link>
   );
 
@@ -54,6 +59,11 @@ export function WatchPage() {
       <div className="watch__header">
         {back}
         <h1 className="watch__title">{title.data?.title ?? " "}</h1>
+        {episode && (
+          <p className="muted watch__episode">
+            Сезон {episode.season}, епізод {episode.number}: {episode.name}
+          </p>
+        )}
       </div>
       {playback.data ? (
         <VideoPlayer

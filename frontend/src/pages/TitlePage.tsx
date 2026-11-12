@@ -49,12 +49,22 @@ export function TitlePage() {
   return (
     <article className="title-page">
       <TitleHero title={title} />
-      {title.type === "series" && <Seasons seasons={title.seasons} />}
+      {title.type === "series" && <Seasons seasons={title.seasons} titleId={title.id} />}
     </article>
   );
 }
 
 function TitleHero({ title }: { title: TitleDetail }) {
+  // Series are watched episode by episode: the button opens the first episode with a video.
+  const firstEpisode = title.seasons
+    .flatMap((season) => season.episodes.map((episode) => ({ ...episode, season: season.number })))
+    .find((episode) => episode.has_video);
+  const watchLink = title.has_video
+    ? `/watch/${title.id}`
+    : firstEpisode
+      ? `/watch/${title.id}?episode=${firstEpisode.id}`
+      : null;
+
   const rating = formatRating(title.rating);
   const duration = formatDuration(title.duration);
   const episodes = title.seasons.reduce((sum, season) => sum + season.episodes.length, 0);
@@ -103,9 +113,9 @@ function TitleHero({ title }: { title: TitleDetail }) {
           <p className="title-hero__description">{title.description || "Опис відсутній."}</p>
 
           <div className="title-hero__actions">
-            {title.has_video ? (
-              <Link to={`/watch/${title.id}`} className="button button--play">
-                ▶ Дивитися
+            {watchLink ? (
+              <Link to={watchLink} className="button button--play">
+                ▶ Дивитися{firstEpisode ? ` · С${firstEpisode.season} Е${firstEpisode.number}` : ""}
               </Link>
             ) : (
               <span className="muted">Онлайн-перегляд цього тайтлу поки недоступний.</span>
@@ -125,7 +135,7 @@ function TitleHero({ title }: { title: TitleDetail }) {
   );
 }
 
-function Seasons({ seasons }: { seasons: Season[] }) {
+function Seasons({ seasons, titleId }: { seasons: Season[]; titleId: number }) {
   const [activeNumber, setActiveNumber] = useState(seasons[0]?.number);
   const active = seasons.find((season) => season.number === activeNumber) ?? seasons[0];
 
@@ -157,6 +167,15 @@ function Seasons({ seasons }: { seasons: Season[] }) {
             <span className="episode__number">{episode.number}</span>
             <div>
               <h3 className="episode__name">
+                {episode.has_video && (
+                  <Link
+                    to={`/watch/${titleId}?episode=${episode.id}`}
+                    className="episode__play"
+                    aria-label={`Дивитися епізод ${episode.number}`}
+                  >
+                    ▶
+                  </Link>
+                )}
                 {episode.name}
                 {episode.duration && <span className="muted"> · {formatDuration(episode.duration)}</span>}
               </h3>
