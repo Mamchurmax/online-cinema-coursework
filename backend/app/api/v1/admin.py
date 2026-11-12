@@ -212,7 +212,9 @@ def delete_episode(episode_id: int, _: AdminUser, catalog: CatalogAdmin):
 def _video_read(asset: VideoAsset) -> VideoAssetAdminRead:
     episode = asset.episode
     title = asset.title if episode is None else episode.season.title
-    label = None if episode is None else f"S{episode.season.number}E{episode.number}: {episode.name}"
+    label = None
+    if episode is not None:
+        label = f"S{episode.season.number}E{episode.number}: {episode.name}"
     return VideoAssetAdminRead(
         id=asset.id, hls_path=asset.hls_path, qualities=asset.qualities,
         duration_sec=asset.duration_sec, title_id=title.id, title=title.title,

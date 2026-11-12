@@ -60,6 +60,15 @@ package "api.v1" {
     + continue_watching() : list[HistoryEntry]
     + save_progress(asset_id, position_sec) : HistoryEntry
   }
+  class RecommendationsRouter <<router>> {
+    + recommendations(strategy, limit) : list[RecommendationRead]
+  }
+  class AdminRouter <<router>> {
+    + create_title / update_title / delete_title
+    + import_title(tmdb_id, type)
+    + add_season / add_episode / attach_video
+    + update_plan / set_user_role / delete_user
+  }
   class BillingRouter <<router>> {
     + list_plans() : list[PlanRead]
     + pay(plan_code, scenario) : PaymentRead
@@ -201,6 +210,47 @@ package "services" {
     }
   }
 
+  package "recommendations" {
+    class RecommendationService <<Context>> {
+      - _strategies : dict[str, RecommendationStrategy]
+      + recommend(user, strategy, limit) : list[Recommendation]
+      + profile(user) : UserProfile
+    }
+    abstract class RecommendationStrategy <<Strategy>> STRATEGY {
+      + code : str
+      + {abstract} recommend(profile, limit) : list[Recommendation]
+    }
+    class GenreBasedStrategy <<ConcreteStrategy>> STRATEGY {
+      + recommend(profile, limit)
+    }
+    class PopularityStrategy <<ConcreteStrategy>> STRATEGY {
+      + recommend(profile, limit)
+    }
+    class HybridStrategy <<ConcreteStrategy>> STRATEGY {
+      - _parts : list[(RecommendationStrategy, float)]
+      + recommend(profile, limit)
+    }
+    class UserProfile {
+      + genre_weights : Counter[int]
+      + seen_title_ids : set[int]
+    }
+  }
+
+  package "admin" {
+    class CatalogAdminService {
+      + create_title(fields) : Title
+      + update_title(id, fields) : Title
+      + import_from_tmdb(tmdb_id, type) : Title
+      + add_season(title_id, number, name) : Season
+      + add_episode(season_id, fields) : Episode
+    }
+    class AccountsAdminService {
+      + search_users(query, page, size)
+      + set_role(actor, user_id, role) : User
+      + update_plan(plan_id, fields) : Plan
+    }
+  }
+
   package "favorites" {
     class FavoriteService {
       + add(user, title_id)
@@ -336,6 +386,11 @@ package "repositories" {
   class SubscriptionRepository {
     + get_active(user_id, now) : Subscription
   }
+  class RecommendationRepository {
+    + viewing_signals(user_id) : list[ViewingSignal]
+    + titles_with_genres(genre_ids, exclude, limit) : list[Title]
+    + popular_titles(exclude, limit) : list[Title]
+  }
   class WatchHistoryRepository {
     + get(user_id, asset_id) : WatchHistory
     + list_recent(user_id, limit) : list[WatchHistory]
@@ -467,6 +522,23 @@ StatisticsListener --> TitleRepository : watch_count + 1
 SubscriptionActivationListener --> SubscriptionService : activate()
 SubscriptionService --> EventPublisher : SubscriptionActivated
 NotificationListener --> NotificationService
+
+RecommendationsRouter --> RecommendationService
+RecommendationService o--> "3" RecommendationStrategy : обирає за кодом
+RecommendationService ..> UserProfile : будує
+GenreBasedStrategy --|> RecommendationStrategy
+PopularityStrategy --|> RecommendationStrategy
+HybridStrategy --|> RecommendationStrategy
+HybridStrategy o--> "*" RecommendationStrategy : зважує результати
+GenreBasedStrategy --> RecommendationRepository
+PopularityStrategy --> RecommendationRepository
+RecommendationService --> RecommendationRepository
+
+AdminRouter --> CatalogAdminService
+AdminRouter --> AccountsAdminService
+AdminRouter --> MediaLibraryService : відео, реклама
+CatalogAdminService ..> CatalogImportService : імпорт з TMDB (Adapter)
+CatalogAdminService --> TitleRepository
 
 Title "1" o-- "*" Genre
 Title "1" o-- "*" Country

@@ -24,7 +24,9 @@ class AccountsAdminService:
         self._users = users
         self._plans = plans
 
-    def search_users(self, query: str | None, page: int, page_size: int) -> tuple[Sequence[User], int]:
+    def search_users(
+        self, query: str | None, page: int, page_size: int
+    ) -> tuple[Sequence[User], int]:
         return self._users.search(query, (page - 1) * page_size, page_size)
 
     def set_role(self, actor: User, user_id: int, role: UserRole) -> User:

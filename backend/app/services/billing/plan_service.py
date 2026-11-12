@@ -60,7 +60,9 @@ class PlanService:
     def all_plans(self) -> Sequence[Plan]:
         return self._plans.list_all()
 
-    def current_subscription(self, user_id: int, now: datetime | None = None) -> Subscription | None:
+    def current_subscription(
+        self, user_id: int, now: datetime | None = None
+    ) -> Subscription | None:
         return self._subscriptions.get_active(user_id, now or datetime.now(UTC))
 
     def current_plan(self, user_id: int, now: datetime | None = None) -> Plan:
