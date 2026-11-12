@@ -70,7 +70,7 @@ class PopularityReport(BaseReport[PopularityRaw, PopularityData]):
             item = stats.setdefault(watch.title_id, TitleStats(info))
             item.viewers.add(watch.user_id)
             item.completions += watch.completed
-            item.watch_sec += watch.progress_sec
+            item.watch_sec += watch.watched_sec
 
         genre_views: Counter[str] = Counter()
         type_views: Counter[TitleType] = Counter()

@@ -39,6 +39,14 @@ class WatchRow:
     progress_sec: int
     completed: bool
     watched_at: datetime
+    duration_sec: int
+
+    @property
+    def watched_sec(self) -> int:
+        """A finished video counts in full: after "watch again" the position starts over."""
+        if self.completed:
+            return self.duration_sec
+        return min(self.progress_sec, self.duration_sec)
 
 
 @dataclass(frozen=True)
@@ -80,6 +88,7 @@ class ReportRepository:
                 WatchHistory.progress_sec,
                 WatchHistory.completed,
                 WatchHistory.last_watched_at,
+                VideoAsset.duration_sec,
             )
             .select_from(WatchHistory)
             .join(VideoAsset, VideoAsset.id == WatchHistory.video_asset_id)

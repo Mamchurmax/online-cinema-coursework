@@ -81,13 +81,13 @@ class ActivityReport(BaseReport[ActivityRaw, ActivityData]):
         for watch in raw.watches:
             if (stats := days.get(day_of(watch.watched_at))) is not None:
                 stats.active.add(watch.user_id)
-                stats.watch_sec += watch.progress_sec
+                stats.watch_sec += watch.watched_sec
             info = raw.users.get(watch.user_id)
             if info is not None:
                 user = users.setdefault(watch.user_id, UserStats(info))
                 user.titles.add(watch.title_id)
                 user.completions += watch.completed
-                user.watch_sec += watch.progress_sec
+                user.watch_sec += watch.watched_sec
 
         return ActivityData(
             days=list(days.values()),
@@ -96,7 +96,7 @@ class ActivityReport(BaseReport[ActivityRaw, ActivityData]):
             new_users=len(raw.registrations),
             active_users=len({w.user_id for w in raw.watches}),
             completions=sum(w.completed for w in raw.watches),
-            watch_sec=sum(w.progress_sec for w in raw.watches),
+            watch_sec=sum(w.watched_sec for w in raw.watches),
         )
 
     def format(self, data: ActivityData, period: ReportPeriod) -> ReportBody:

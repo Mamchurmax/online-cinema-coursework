@@ -81,7 +81,7 @@ def world(session: Session) -> dict:
     session.add_all([
         watch(u1, v_old, 3600, True, at(2)),
         watch(u2, v_old, 1800, False, at(3)),
-        watch(u1, v_e1, 1200, True, at(3, 20)),
+        watch(u1, v_e1, 1200, True, at(3, 20)),  # finished, then started over: counts in full
         watch(u1, v_e2, 600, False, at(4)),
         watch(u3, v_cartoon, 900, False, at(5)),
         watch(u2, v_cartoon, 500, False, at(20, month=10)),  # before the period
@@ -161,7 +161,7 @@ def test_popularity_report_ranks_titles_and_genres(session: Session, world: dict
     result = build(session, "popularity")
 
     assert metrics(result) == {"views": 4, "viewers": 3, "completions": 2, "titles": 3,
-                               "hours": hours(8100)}  # fmt: skip
+                               "hours": hours(10500)}  # fmt: skip
     assert [(r["title"], r["views"], r["completions"]) for r in result.table.rows] == [
         ("Хрещений батько", 2, 1), ("Аркейн", 1, 1), ("Мрія Слонів", 1, 0)]  # fmt: skip
     assert chart(result, "top_genres") == [{"genre": "Драма", "views": 3},
@@ -175,8 +175,8 @@ def test_activity_report_counts_days_and_users(session: Session, world: dict) ->
     result = build(session, "activity")
 
     assert metrics(result) == {
-        "users_total": 3, "new_users": 2, "active_users": 3, "hours": hours(8100),
-        "hours_per_user": hours(2700), "completions": 2,
+        "users_total": 3, "new_users": 2, "active_users": 3, "hours": hours(10500),
+        "hours_per_user": hours(3500), "completions": 2,
     }  # fmt: skip
     daily = {row["day"]: (row["active"], row["new_users"]) for row in chart(result, "daily_users")}
     assert len(daily) == 7
@@ -185,7 +185,7 @@ def test_activity_report_counts_days_and_users(session: Session, world: dict) ->
     assert daily["2026-11-05"] == (1, 1)
     assert daily["2026-11-07"] == (0, 0)
     top = result.table.rows[0]
-    assert (top["email"], top["titles"], top["hours"]) == ("ann@example.com", 2, hours(5400))
+    assert (top["email"], top["titles"], top["hours"]) == ("ann@example.com", 2, hours(7800))
 
 
 def test_revenue_report_sums_successful_payments(session: Session, world: dict) -> None:
