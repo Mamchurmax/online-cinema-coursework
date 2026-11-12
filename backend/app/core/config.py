@@ -37,6 +37,9 @@ class Settings(BaseSettings):
 
     tmdb_api_token: str = ""
 
+    # Which PaymentProviderFactory to use (see services/payments/factory.py).
+    payment_provider: str = "mock"
+
     # Videos: MEDIA_ROOT/source holds originals, MEDIA_ROOT/hls the streams.
     # The default fits a local run from `backend/`; Docker sets MEDIA_ROOT=/media.
     media_root: Path = Path("../media")

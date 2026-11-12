@@ -1,10 +1,11 @@
 """Subscription plans and the plan a user currently has."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from app.models import Plan
+from app.models import Plan, Subscription
 from app.repositories.billing_repository import PlanRepository, SubscriptionRepository
 
 FREE_PLAN_CODE = "free"
@@ -55,6 +56,12 @@ class PlanService:
                 )
             result.append((plan, created))
         return result
+
+    def all_plans(self) -> Sequence[Plan]:
+        return self._plans.list_all()
+
+    def current_subscription(self, user_id: int, now: datetime | None = None) -> Subscription | None:
+        return self._subscriptions.get_active(user_id, now or datetime.now(UTC))
 
     def current_plan(self, user_id: int, now: datetime | None = None) -> Plan:
         """Plan of the active subscription; without one every user is on Free."""

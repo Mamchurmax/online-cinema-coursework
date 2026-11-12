@@ -1,17 +1,20 @@
-"""Data access for plans and subscriptions."""
+"""Data access for plans, subscriptions and payments."""
 
 from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models import Plan, Subscription, SubscriptionStatus
+from app.models import Payment, PaymentStatus, Plan, Subscription, SubscriptionStatus
 
 
 class PlanRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
+
+    def get(self, plan_id: int) -> Plan | None:
+        return self._db.get(Plan, plan_id)
 
     def get_by_code(self, code: str) -> Plan | None:
         return self._db.scalars(select(Plan).where(Plan.code == code)).one_or_none()
@@ -44,3 +47,69 @@ class SubscriptionRepository:
             .limit(1)
         )
         return self._db.scalars(statement).one_or_none()
+
+    def add(self, subscription: Subscription) -> None:
+        """Part of the caller's transaction (activation runs inside a payment)."""
+        self._db.add(subscription)
+        self._db.flush()
+
+    def list_active_expiring(self, start: datetime, end: datetime) -> Sequence[Subscription]:
+        """Active subscriptions that end within [start, end]."""
+        statement = (
+            select(Subscription)
+            .options(joinedload(Subscription.plan))
+            .where(
+                Subscription.status == SubscriptionStatus.ACTIVE,
+                Subscription.expires_at >= start,
+                Subscription.expires_at <= end,
+            )
+            .order_by(Subscription.expires_at)
+        )
+        return self._db.scalars(statement).all()
+
+    def list_ended_but_active(self, now: datetime) -> Sequence[Subscription]:
+        statement = select(Subscription).where(
+            Subscription.status == SubscriptionStatus.ACTIVE, Subscription.expires_at <= now
+        )
+        return self._db.scalars(statement).all()
+
+    def commit(self) -> None:
+        self._db.commit()
+
+
+class PaymentRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def get(self, payment_id: int) -> Payment | None:
+        return self._db.get(Payment, payment_id)
+
+    def add(self, payment: Payment) -> None:
+        self._db.add(payment)
+        self._db.flush()
+
+    def list_for_user(self, user_id: int, limit: int = 50) -> Sequence[Payment]:
+        statement = (
+            select(Payment)
+            .options(joinedload(Payment.plan))
+            .where(Payment.user_id == user_id)
+            .order_by(Payment.created_at.desc(), Payment.id.desc())
+            .limit(limit)
+        )
+        return self._db.scalars(statement).all()
+
+    def list_by_status(self, status: PaymentStatus, limit: int = 100) -> Sequence[Payment]:
+        statement = (
+            select(Payment)
+            .options(joinedload(Payment.plan), joinedload(Payment.user))
+            .where(Payment.status == status)
+            .order_by(Payment.created_at, Payment.id)
+            .limit(limit)
+        )
+        return self._db.scalars(statement).all()
+
+    def commit(self) -> None:
+        self._db.commit()
+
+    def rollback(self) -> None:
+        self._db.rollback()

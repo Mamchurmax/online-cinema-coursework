@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.models import NotificationType
 from app.repositories.catalog_repository import TitleRepository
@@ -14,6 +15,9 @@ from app.services.events.events import (
     TitleWatched,
 )
 from app.services.notifications.notification_service import NotificationService
+
+if TYPE_CHECKING:
+    from app.services.billing.subscription_service import SubscriptionService
 
 
 class StatisticsListener:
@@ -75,3 +79,14 @@ class NotificationListener:
             f"Підписка {event.plan_name} закінчується {when} ({_date(event.expires_at)}). "
             "Продовжте її, щоб дивитися без реклами.",
         )
+
+
+class SubscriptionActivationListener:
+    """A successful payment activates (or extends) the paid plan."""
+
+    def __init__(self, subscriptions: "SubscriptionService") -> None:
+        self._subscriptions = subscriptions
+
+    def on_payment_succeeded(self, event: DomainEvent) -> None:
+        assert isinstance(event, PaymentSucceeded)
+        self._subscriptions.activate(event.user_id, event.plan_id)

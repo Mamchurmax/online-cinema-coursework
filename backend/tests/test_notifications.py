@@ -14,7 +14,11 @@ from app.services.events.events import (
     SubscriptionActivated,
     SubscriptionExpiring,
 )
+from app.repositories.notification_repository import NotificationRepository
+from app.services.events.bus import EventBus
+from app.services.events.listeners import NotificationListener
 from app.services.events.setup import build_event_bus
+from app.services.notifications.notification_service import NotificationService
 
 
 def register(client: TestClient, email: str) -> dict[str, str]:
@@ -34,7 +38,13 @@ def test_billing_events_become_notifications(session: Session) -> None:
     user = User(email="n@example.com", password_hash="x", display_name="N")
     session.add(user)
     session.commit()
-    bus = build_event_bus(session)
+    # Only the notification observer: activation of a plan is tested in test_payments.py.
+    listener = NotificationListener(NotificationService(NotificationRepository(session)))
+    bus = EventBus()
+    bus.subscribe(PaymentSucceeded, listener.on_payment_succeeded)
+    bus.subscribe(PaymentFailed, listener.on_payment_failed)
+    bus.subscribe(SubscriptionActivated, listener.on_subscription_activated)
+    bus.subscribe(SubscriptionExpiring, listener.on_subscription_expiring)
     expires = datetime(2027, 1, 12, tzinfo=UTC)
 
     bus.publish(PaymentSucceeded(payment_id=1, user_id=user.id, plan_id=2, amount=Decimal("149")))
