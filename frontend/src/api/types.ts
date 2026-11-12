@@ -20,6 +20,7 @@ export interface Episode {
   name: string;
   description: string;
   duration: number | null;
+  has_video: boolean;
 }
 
 export interface Season {
@@ -37,6 +38,7 @@ export interface TitleListItem {
   rating: string | null; // Decimal is serialised as a string, e.g. "8.2"
   poster_url: string | null;
   genres: Genre[];
+  has_video: boolean;
 }
 
 export interface TitleDetail extends TitleListItem {

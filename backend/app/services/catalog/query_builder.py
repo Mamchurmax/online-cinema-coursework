@@ -116,7 +116,7 @@ class CatalogQueryBuilder:
         statement = (
             select(Title)
             .where(*self._conditions)
-            .options(selectinload(Title.genres))
+            .options(selectinload(Title.genres), selectinload(Title.video))
             # Title.id makes the order stable, so pages never overlap.
             .order_by(*order_by, Title.id)
             .offset((self._page - 1) * self._page_size)

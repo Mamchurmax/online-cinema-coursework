@@ -1,12 +1,16 @@
 """Catalog: titles (movies and series), genres, countries, seasons, episodes."""
 
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, ForeignKey, Numeric, String, Table, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, enum_column
 from app.models.enums import TitleType
+
+if TYPE_CHECKING:
+    from app.models.media import VideoAsset
 
 title_genres = Table(
     "title_genres",
@@ -58,6 +62,12 @@ class Title(CreatedAtMixin, Base):
     seasons: Mapped[list["Season"]] = relationship(
         back_populates="title", cascade="all, delete-orphan", order_by="Season.number"
     )
+    # Read-only side of VideoAsset.title_id; videos are managed via VideoAsset.
+    video: Mapped["VideoAsset | None"] = relationship(viewonly=True)
+
+    @property
+    def has_video(self) -> bool:
+        return self.video is not None
 
 
 class Season(Base):
@@ -87,3 +97,8 @@ class Episode(Base):
     duration: Mapped[int | None]  # minutes
 
     season: Mapped[Season] = relationship(back_populates="episodes")
+    video: Mapped["VideoAsset | None"] = relationship(viewonly=True)
+
+    @property
+    def has_video(self) -> bool:
+        return self.video is not None

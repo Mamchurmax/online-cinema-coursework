@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Country, Genre, Season, Title
+from app.models import Country, Episode, Genre, Season, Title
 
 
 class TitleRepository:
@@ -26,7 +26,10 @@ class TitleRepository:
             .options(
                 selectinload(Title.genres),
                 selectinload(Title.countries),
-                selectinload(Title.seasons).selectinload(Season.episodes),
+                selectinload(Title.video),
+                selectinload(Title.seasons)
+                .selectinload(Season.episodes)
+                .selectinload(Episode.video),
             )
         )
         return self._db.scalars(statement).one_or_none()

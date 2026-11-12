@@ -58,6 +58,7 @@ class EpisodeRead(BaseModel):
     name: str
     description: str
     duration: int | None
+    has_video: bool
 
 
 class SeasonRead(BaseModel):
@@ -79,6 +80,7 @@ class TitleListItem(BaseModel):
     rating: Decimal | None
     poster_url: str | None
     genres: list[GenreRead]
+    has_video: bool
 
 
 class TitleDetail(TitleListItem):

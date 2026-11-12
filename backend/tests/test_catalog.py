@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import Country, Episode, Genre, Season, Title, TitleType
+from app.models import Country, Episode, Genre, Season, Title, TitleType, VideoAsset
 from app.repositories.catalog_repository import TitleRepository
 from app.services.catalog.query_builder import CatalogQueryBuilder, CatalogSort, SortOrder
 
@@ -177,3 +177,20 @@ def test_filter_option_endpoints(client: TestClient, catalog) -> None:
 def test_catalog_is_public(client: TestClient, catalog) -> None:
     """Guests browse the catalog without a token (see the Use Case diagram)."""
     assert client.get("/api/v1/catalog/titles").status_code == 200
+
+
+def test_titles_report_whether_a_video_is_available(
+    client: TestClient, session: Session, catalog
+) -> None:
+    session.add(VideoAsset(title_id=catalog["matrix"].id, hls_path="matrix/master.m3u8",
+                           qualities=["720p"], duration_sec=60))  # fmt: skip
+    session.commit()
+
+    items = client.get("/api/v1/catalog/titles", params={"page_size": 100}).json()["items"]
+    with_video = {item["title"] for item in items if item["has_video"]}
+    detail = client.get(f"/api/v1/catalog/titles/{catalog['series'].id}").json()
+
+    assert with_video == {"Матриця"}
+    assert client.get(f"/api/v1/catalog/titles/{catalog['matrix'].id}").json()["has_video"]
+    assert detail["has_video"] is False
+    assert {e["has_video"] for e in detail["seasons"][0]["episodes"]} == {False}
