@@ -1,0 +1,62 @@
+@startuml sequence-payment
+title Оплата Premium: Factory Method + State + Observer
+
+autonumber
+skinparam sequenceMessageAlign center
+skinparam participant {
+  BackgroundColor #F5F9FF
+  BorderColor #3B6EA8
+}
+
+actor "Користувач" as User
+participant "Сторінка оплати\n(React)" as Page
+participant "BillingRouter" as Router
+participant "PaymentService" as Service
+participant "PaymentProviderFactory\n<<Factory Method>>" as Factory #C9EEF2
+participant "MockPaymentProvider\n<<Product>>" as Provider #C9EEF2
+participant "PaymentContext\n<<State>>" as Context #E2EFC4
+participant "EventBus\n<<Observer>>" as Bus #FFDCC2
+participant "SubscriptionActivation-\nListener" as Activation #FFDCC2
+participant "Notification-\nListener" as Notify #FFDCC2
+
+== Створення платежу ==
+User -> Page : обирає сценарій «Очікує підтвердження»
+Page -> Router : POST /payments {plan_code: premium, scenario: pending}
+Router -> Factory : payment_provider_factory("mock")
+Router -> Service ** : PaymentService(factory, bus)
+Service -> Factory : provider()
+Factory -> Factory : create_provider()
+Factory --> Service : MockPaymentProvider
+Service -> Provider : charge(payment)
+Provider --> Service : PENDING
+Service -> Context : PaymentContext(payment)\nстан PendingState — без переходу
+Service --> Page : статус pending
+Page --> User : «Очікуємо відповідь банку»
+
+== Відповідь банку ==
+User -> Page : «Банк підтвердив»
+Page -> Router : POST /payments/{id}/bank-response {approved: true}
+Router -> Service : simulate_bank_response(user, id, true)
+Service -> Provider : bank_response(payment, true)
+Provider --> Service : SUCCEEDED
+Service -> Context : succeed()
+Context -> Context : PendingState.succeed()\n→ transition_to(SucceededState)
+Service -> Bus : publish(PaymentSucceeded)
+Bus -> Activation : on_payment_succeeded()
+Activation -> Activation : SubscriptionService.activate()\nPremium на 30 днів
+Activation -> Bus : publish(SubscriptionActivated)
+Bus -> Notify : on_subscription_activated()\n«Підписку Premium активовано до …»
+Bus -> Notify : on_payment_succeeded()\n«Оплату 149.00 грн отримано»
+Service -> Service : commit (платіж, підписка, сповіщення — разом)
+Service --> Page : статус succeeded
+Page --> User : «Оплату отримано», значок Premium, 🔔 2
+
+== Запізніла відповідь ==
+User -> Router : POST /payments/{id}/bank-response {approved: false}
+Router -> Service : simulate_bank_response(…)
+Service -> Context : fail()
+Context -> Context : SucceededState.fail()
+Context --> Service : InvalidPaymentTransitionError
+Service --> Router : 409 Conflict — оплачений платіж не можна «провалити»
+
+@enduml

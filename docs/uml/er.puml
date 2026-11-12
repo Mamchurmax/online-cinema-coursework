@@ -47,6 +47,7 @@ package "Каталог" #F2F8F2 {
     poster_url : varchar(500)
     backdrop_url : varchar(500)
     duration : int
+    * watch_count : int
     * created_at : timestamptz
   }
 
