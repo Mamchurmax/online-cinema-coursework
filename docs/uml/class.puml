@@ -49,6 +49,11 @@ package "api.v1" {
     + list_genres() : list[GenreRead]
     + list_countries() : list[CountryRead]
   }
+  class MeRouter2 as "MeRouter (history)" <<router>> {
+    + read_history() : list[HistoryEntry]
+    + continue_watching() : list[HistoryEntry]
+    + save_progress(asset_id, position_sec) : HistoryEntry
+  }
   class PlaybackRouter <<router>> {
     + start_title(title_id) : PlaybackInfo
     + start_episode(episode_id) : PlaybackInfo
@@ -136,6 +141,13 @@ package "services" {
       - _keep_variants(playlist, allowed) : str
     }
 
+    class WatchHistoryService {
+      + save_progress(user, asset_id, position) : WatchHistory
+      + resume_position(user, asset_id) : int
+      + continue_watching(user) : list[WatchHistory]
+      + history(user) : list[WatchHistory]
+    }
+
     class MediaLibraryService {
       + attach_to_movie(tmdb_id, stream_dir) : VideoAsset
       + register_ad(name, stream_dir) : Ad
@@ -220,6 +232,10 @@ package "repositories" {
   class SubscriptionRepository {
     + get_active(user_id, now) : Subscription
   }
+  class WatchHistoryRepository {
+    + get(user_id, asset_id) : WatchHistory
+    + list_recent(user_id, limit) : list[WatchHistory]
+  }
 }
 
 package "models" {
@@ -256,10 +272,16 @@ package "models" {
     + status : SubscriptionStatus
     + expires_at : datetime
   }
+  class WatchHistory {
+    + progress_sec : int
+    + completed : bool
+    + last_watched_at : datetime
+  }
 }
 
 AuthRouter --> AuthService
 MeRouter ..> AuthService : get_current_user
+MeRouter2 --> WatchHistoryService
 AuthService --> UserRepository
 AuthService ..> Settings
 UserRepository ..> User
@@ -289,6 +311,10 @@ PlaybackService ..> PlaybackPolicy : обирає стратегію
 PlaybackService ..> StreamSource : працює через інтерфейс
 PlaybackService --> VideoAssetRepository
 PlaybackService --> AdRepository
+PlaybackService --> WatchHistoryService : позиція продовження
+WatchHistoryService --> WatchHistoryRepository
+WatchHistoryRepository ..> WatchHistory
+WatchHistory "*" --> "1" VideoAsset
 FreePolicy --|> PlaybackPolicy
 PremiumPolicy --|> PlaybackPolicy
 HlsFileStreamSource ..|> StreamSource
