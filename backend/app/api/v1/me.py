@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.api.deps import CurrentUser, DbSession
 from app.repositories.history_repository import WatchHistoryRepository
 from app.repositories.media_repository import VideoAssetRepository
+from app.repositories.notification_repository import NotificationRepository
 from app.schemas.history import HistoryEntry, ProgressUpdate
+from app.schemas.notification import MarkReadRequest, NotificationList, UnreadCount
 from app.schemas.user import UserRead
 from app.services.events.setup import build_event_bus
 from app.services.history.history_service import (
@@ -15,6 +17,7 @@ from app.services.history.history_service import (
     VideoNotFoundError,
     WatchHistoryService,
 )
+from app.services.notifications.notification_service import NotificationService
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -26,6 +29,13 @@ def get_history_service(db: DbSession) -> WatchHistoryService:
 
 
 HistoryServiceDep = Annotated[WatchHistoryService, Depends(get_history_service)]
+
+
+def get_notification_service(db: DbSession) -> NotificationService:
+    return NotificationService(NotificationRepository(db))
+
+
+NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 
 
 @router.get("", response_model=UserRead)
@@ -68,3 +78,24 @@ def remove_from_history(video_asset_id: int, user: CurrentUser, history: History
     except HistoryEntryNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not in your history") from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/notifications", response_model=NotificationList)
+def read_notifications(
+    user: CurrentUser,
+    notifications: NotificationServiceDep,
+    unread_only: bool = False,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+):
+    """Latest notifications plus the unread counter for the bell icon."""
+    return NotificationList(
+        items=notifications.latest(user, limit, unread_only),
+        unread_count=notifications.unread_count(user),
+    )
+
+
+@router.post("/notifications/read", response_model=UnreadCount)
+def mark_notifications_read(
+    body: MarkReadRequest, user: CurrentUser, notifications: NotificationServiceDep
+):
+    return UnreadCount(unread_count=notifications.mark_read(user, body.ids))
