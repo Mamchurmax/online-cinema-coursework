@@ -3,9 +3,11 @@
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 
-from app.models import User, WatchHistory
+from app.models import User, VideoAsset, WatchHistory
 from app.repositories.history_repository import WatchHistoryRepository
 from app.repositories.media_repository import VideoAssetRepository
+from app.services.events.bus import EventPublisher, NullPublisher
+from app.services.events.events import TitleWatched
 
 # A video counts as watched once 90% of it is behind (end credits are usually skipped).
 COMPLETED_SHARE = 0.9
@@ -27,10 +29,12 @@ class WatchHistoryService:
         history: WatchHistoryRepository,
         videos: VideoAssetRepository,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        events: EventPublisher | None = None,
     ) -> None:
         self._history = history
         self._videos = videos
         self._clock = clock
+        self._events = events or NullPublisher()
 
     def save_progress(self, user: User, video_asset_id: int, position_sec: int) -> WatchHistory:
         """Remember where the viewer is. Called by the player every few seconds."""
@@ -42,10 +46,17 @@ class WatchHistoryService:
         entry = self._history.get(user.id, video_asset_id) or WatchHistory(
             user_id=user.id, video_asset_id=video_asset_id
         )
+        was_completed = bool(entry.completed)
         entry.progress_sec = position
         # Once finished, a film stays "watched" even if it is opened again later.
-        entry.completed = bool(entry.completed) or position >= video.duration_sec * COMPLETED_SHARE
+        entry.completed = was_completed or position >= video.duration_sec * COMPLETED_SHARE
         entry.last_watched_at = self._clock()
+
+        if entry.completed and not was_completed:
+            # Observer: statistics (and later recommendations) react to finished views.
+            self._events.publish(
+                TitleWatched(user_id=user.id, title_id=_title_id(video), video_asset_id=video.id)
+            )
         return self._history.save(entry)
 
     def resume_position(self, user: User, video_asset_id: int) -> int:
@@ -71,3 +82,10 @@ class WatchHistoryService:
         if entry is None:
             raise HistoryEntryNotFoundError(video_asset_id)
         self._history.delete(entry)
+
+
+def _title_id(video: VideoAsset) -> int:
+    """The title a video belongs to: the movie itself or the series of an episode."""
+    if video.title_id is not None:
+        return video.title_id
+    return video.episode.season.title_id

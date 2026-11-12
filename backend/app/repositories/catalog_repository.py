@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Country, Episode, Genre, Season, Title
@@ -39,6 +39,12 @@ class TitleRepository:
     ) -> tuple[Sequence[Title], int]:
         """Run a prepared search (see `CatalogQueryBuilder`): one page and the total."""
         return self._db.scalars(statement).all(), self._db.scalar(count_statement) or 0
+
+    def increment_watch_count(self, title_id: int) -> None:
+        """Atomic `watch_count + 1`, safe when several viewers finish at once."""
+        self._db.execute(
+            update(Title).where(Title.id == title_id).values(watch_count=Title.watch_count + 1)
+        )
 
     def add(self, title: Title) -> None:
         self._db.add(title)

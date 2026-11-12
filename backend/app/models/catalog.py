@@ -56,6 +56,8 @@ class Title(CreatedAtMixin, Base):
     poster_url: Mapped[str | None] = mapped_column(String(500))
     backdrop_url: Mapped[str | None] = mapped_column(String(500))
     duration: Mapped[int | None]  # minutes; for series — typical episode length
+    # How many times the title was watched to the end (updated by StatisticsListener).
+    watch_count: Mapped[int] = mapped_column(default=0, server_default="0")
 
     genres: Mapped[list[Genre]] = relationship(secondary=title_genres)
     countries: Mapped[list[Country]] = relationship(secondary=title_countries)

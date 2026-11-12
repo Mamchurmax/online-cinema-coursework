@@ -9,6 +9,7 @@ from app.repositories.history_repository import WatchHistoryRepository
 from app.repositories.media_repository import VideoAssetRepository
 from app.schemas.history import HistoryEntry, ProgressUpdate
 from app.schemas.user import UserRead
+from app.services.events.setup import build_event_bus
 from app.services.history.history_service import (
     HistoryEntryNotFoundError,
     VideoNotFoundError,
@@ -19,7 +20,9 @@ router = APIRouter(prefix="/me", tags=["me"])
 
 
 def get_history_service(db: DbSession) -> WatchHistoryService:
-    return WatchHistoryService(WatchHistoryRepository(db), VideoAssetRepository(db))
+    return WatchHistoryService(
+        WatchHistoryRepository(db), VideoAssetRepository(db), events=build_event_bus(db)
+    )
 
 
 HistoryServiceDep = Annotated[WatchHistoryService, Depends(get_history_service)]
