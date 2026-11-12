@@ -14,6 +14,11 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <CatalogPage /> },
       { path: "titles/:titleId", element: <TitlePage /> },
+      {
+        // The player (and hls.js, ~400 KB) is loaded only when someone starts watching.
+        path: "watch/:titleId",
+        lazy: async () => ({ Component: (await import("./pages/WatchPage")).WatchPage }),
+      },
       { path: "login", element: <AuthPage mode="login" /> },
       { path: "register", element: <AuthPage mode="register" /> },
     ],

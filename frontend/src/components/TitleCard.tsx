@@ -14,6 +14,7 @@ export function TitleCard({ title }: { title: TitleListItem }) {
         <Poster src={title.poster_url} title={title.title} />
         {rating && <span className="badge badge--rating">★ {rating}</span>}
         {title.type === "series" && <span className="badge badge--type">{TITLE_TYPE_LABEL.series}</span>}
+        {title.has_video && <span className="badge badge--online">▶ Онлайн</span>}
       </div>
       <h3 className="title-card__name">{title.title}</h3>
       <p className="title-card__meta">

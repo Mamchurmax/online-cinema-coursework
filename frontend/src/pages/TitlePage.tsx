@@ -101,6 +101,14 @@ function TitleHero({ title }: { title: TitleDetail }) {
 
           <p className="title-hero__description">{title.description || "Опис відсутній."}</p>
 
+          {title.has_video ? (
+            <Link to={`/watch/${title.id}`} className="button button--play">
+              ▶ Дивитися
+            </Link>
+          ) : (
+            <p className="muted">Онлайн-перегляд цього тайтлу поки недоступний.</p>
+          )}
+
           {title.countries.length > 0 && (
             <p className="muted">
               {plural(title.countries.length, ["Країна", "Країни", "Країни"])}:{" "}
