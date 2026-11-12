@@ -38,6 +38,19 @@ class AuthService:
         )
         return self._users.save(user)
 
+    def ensure_admin(self, email: str, password: str, display_name: str) -> tuple[User, bool]:
+        """Create an administrator, or promote and re-key an existing user.
+
+        Returns the user and whether it was newly created.
+        """
+        user = self._users.get_by_email(self._normalize_email(email))
+        created = user is None
+        if user is None:
+            user = self.register(email, password, display_name)
+        user.role = UserRole.ADMIN
+        user.password_hash = hash_password(password)
+        return self._users.save(user), created
+
     def login(self, email: str, password: str) -> str:
         """Check credentials and return a new access token."""
         user = self._users.get_by_email(self._normalize_email(email))
