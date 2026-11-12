@@ -1,0 +1,56 @@
+@startuml sequence-playback
+title Перегляд фільму: Strategy (тарифна політика) + Proxy (доступ до плейлиста)
+
+autonumber
+skinparam sequenceMessageAlign center
+skinparam participant {
+  BackgroundColor #F5F9FF
+  BorderColor #3B6EA8
+}
+
+actor "Глядач" as Viewer
+participant "Плеєр\n(React + hls.js)" as Player
+participant "PlaybackRouter" as Router
+participant "PlaybackService" as Service
+participant "PlanService" as Plans
+participant "PlaybackPolicy\n<<Strategy>>" as Policy #FBDDEB
+participant "StreamAccessProxy\n<<Proxy>>" as Proxy #E6DBF7
+participant "HlsFileStreamSource\n<<RealSubject>>" as Files #E6DBF7
+participant "nginx /media/hls" as Media
+
+Viewer -> Player : натискає «Дивитися»
+Player -> Router : GET /playback/titles/{id}\nAuthorization: Bearer JWT
+Router -> Service : start_title(user, id)
+Service -> Plans : current_plan(user)
+Plans --> Service : Plan (активна підписка або Free)
+Service -> Policy ** : policy_for_plan(plan)\nFreePolicy або PremiumPolicy
+Service -> Policy : allowed_qualities(asset.qualities)
+Policy --> Service : ["360p", "720p"]
+Service -> Policy : requires_preroll_ad()
+Policy --> Service : true (Free)
+Service --> Router : PlaybackSession\n(master_url, якості, реклама)
+Router --> Player : PlaybackInfo (JSON)
+
+opt реклама (тариф Free)
+  Player -> Media : GET /media/hls/ads/demo/master.m3u8
+  Player -> Player : показує pre-roll, потім фільм
+end
+
+Player -> Router : GET /playback/assets/{id}/master.m3u8
+Router -> Service : master_playlist(user, id)
+Service -> Proxy ** : StreamAccessProxy(HlsFileStreamSource, policy)
+Service -> Proxy : master_playlist(asset)
+Proxy -> Policy : allowed_qualities(asset.qualities)
+alt жодна якість не дозволена
+  Proxy --> Router : StreamAccessDeniedError → 403
+else доступ дозволено
+  Proxy -> Files : master_playlist(asset)
+  Files --> Proxy : усі варіанти 360p / 720p / 1080p
+  Proxy -> Proxy : _keep_variants(): прибирає 1080p
+  Proxy --> Router : плейлист лише з дозволеними якостями
+  Router --> Player : application/vnd.apple.mpegurl
+  Player -> Media : GET /media/hls/<фільм>/720p/index.m3u8, seg_*.ts
+  Media --> Player : сегменти відео
+end
+
+@enduml

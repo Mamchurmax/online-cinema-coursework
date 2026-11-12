@@ -5,6 +5,8 @@ title Онлайн-кінотеатр — діаграма класів (реа�
 !define SINGLETON #FFE8B0
 !define ADAPTER #CDEFD5
 !define BUILDER #D6E4FF
+!define STRATEGY #FBDDEB
+!define PROXY #E6DBF7
 
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
@@ -19,6 +21,8 @@ legend top right
   | <back:SINGLETON>      </back> | Singleton |
   | <back:ADAPTER>      </back> | Adapter |
   | <back:BUILDER>      </back> | Builder |
+  | <back:STRATEGY>      </back> | Strategy |
+  | <back:PROXY>      </back> | Proxy |
 endlegend
 
 package "core" {
@@ -44,6 +48,11 @@ package "api.v1" {
     + get_title(title_id) : TitleDetail
     + list_genres() : list[GenreRead]
     + list_countries() : list[CountryRead]
+  }
+  class PlaybackRouter <<router>> {
+    + start_title(title_id) : PlaybackInfo
+    + start_episode(episode_id) : PlaybackInfo
+    + master_playlist(asset_id) : m3u8
   }
 }
 
@@ -81,6 +90,55 @@ package "services" {
       + count_statement : Select
       + page : int
       + page_size : int
+    }
+  }
+
+  package "billing" {
+    class PlanService {
+      + ensure_default_plans() : list[Plan]
+      + current_plan(user_id) : Plan
+    }
+  }
+
+  package "streaming" {
+    class PlaybackService <<Context>> {
+      + start_title(user, title_id) : PlaybackSession
+      + start_episode(user, episode_id) : PlaybackSession
+      + master_playlist(user, asset_id) : str
+      - _policy(user) : PlaybackPolicy
+      - _pick_ad() : AdInfo
+    }
+
+    abstract class PlaybackPolicy <<Strategy>> STRATEGY {
+      + plan : Plan
+      + max_quality : str
+      + allowed_qualities(available) : list[str]
+      + {abstract} requires_preroll_ad() : bool
+    }
+    class FreePolicy <<ConcreteStrategy>> STRATEGY {
+      + requires_preroll_ad() : bool = true
+    }
+    class PremiumPolicy <<ConcreteStrategy>> STRATEGY {
+      + requires_preroll_ad() : bool = false
+    }
+
+    interface StreamSource <<Subject>> PROXY {
+      + master_playlist(asset : VideoAsset) : str
+    }
+    class HlsFileStreamSource <<RealSubject>> PROXY {
+      - _hls_root : Path
+      + master_playlist(asset) : str
+    }
+    class StreamAccessProxy <<Proxy>> PROXY {
+      - _source : StreamSource
+      - _policy : PlaybackPolicy
+      + master_playlist(asset) : str
+      - _keep_variants(playlist, allowed) : str
+    }
+
+    class MediaLibraryService {
+      + attach_to_movie(tmdb_id, stream_dir) : VideoAsset
+      + register_ad(name, stream_dir) : Ad
     }
   }
 
@@ -149,6 +207,19 @@ package "repositories" {
   class CountryRepository {
     + list_all() : list[Country]
   }
+  class VideoAssetRepository {
+    + get_for_title(title_id) : VideoAsset
+    + get_for_episode(episode_id) : VideoAsset
+  }
+  class AdRepository {
+    + list_active() : list[Ad]
+  }
+  class PlanRepository {
+    + get_by_code(code) : Plan
+  }
+  class SubscriptionRepository {
+    + get_active(user_id, now) : Subscription
+  }
 }
 
 package "models" {
@@ -167,6 +238,24 @@ package "models" {
   class Country
   class Season
   class Episode
+  class VideoAsset {
+    + hls_path : str
+    + qualities : list[str]
+    + duration_sec : int
+  }
+  class Ad {
+    + hls_path : str
+    + active : bool
+  }
+  class Plan {
+    + code : str
+    + max_quality : str
+    + has_ads : bool
+  }
+  class Subscription {
+    + status : SubscriptionStatus
+    + expires_at : datetime
+  }
 }
 
 AuthRouter --> AuthService
@@ -194,9 +283,35 @@ TitleRepository ..> Title
 GenreRepository ..> Genre
 CountryRepository ..> Country
 
+PlaybackRouter --> PlaybackService
+PlaybackService --> PlanService : тариф користувача
+PlaybackService ..> PlaybackPolicy : обирає стратегію
+PlaybackService ..> StreamSource : працює через інтерфейс
+PlaybackService --> VideoAssetRepository
+PlaybackService --> AdRepository
+FreePolicy --|> PlaybackPolicy
+PremiumPolicy --|> PlaybackPolicy
+HlsFileStreamSource ..|> StreamSource
+StreamAccessProxy ..|> StreamSource
+StreamAccessProxy o--> HlsFileStreamSource : делегує
+StreamAccessProxy --> PlaybackPolicy : які якості дозволені
+PlanService --> PlanRepository
+PlanService --> SubscriptionRepository
+MediaLibraryService --> VideoAssetRepository
+MediaLibraryService --> AdRepository
+VideoAssetRepository ..> VideoAsset
+AdRepository ..> Ad
+PlanRepository ..> Plan
+SubscriptionRepository ..> Subscription
+PlaybackPolicy --> Plan
+
 Title "1" o-- "*" Genre
 Title "1" o-- "*" Country
 Title "1" *-- "*" Season
 Season "1" *-- "*" Episode
+Title "1" -- "0..1" VideoAsset
+Episode "1" -- "0..1" VideoAsset
+Subscription "*" --> "1" Plan
+User "1" -- "*" Subscription
 
 @enduml
