@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
 from app.models import PaymentScenario, PaymentStatus, SubscriptionStatus
 
@@ -58,7 +58,7 @@ class PaymentRead(BaseModel):
 
 
 class AdminPaymentRead(PaymentRead):
-    user_email: EmailStr
+    user_email: str
 
     @classmethod
     def from_payment(cls, payment) -> "AdminPaymentRead":  # noqa: ANN001

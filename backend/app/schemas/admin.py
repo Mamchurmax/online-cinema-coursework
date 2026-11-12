@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import TitleType, UserRole
 
@@ -73,7 +73,7 @@ class UserAdminRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    email: EmailStr
+    email: str  # stored value; validated on input, not re-validated on output
     display_name: str
     role: UserRole
     created_at: datetime

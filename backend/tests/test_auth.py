@@ -120,3 +120,16 @@ def test_require_admin_allows_only_admins() -> None:
     with pytest.raises(HTTPException) as exc_info:
         require_admin(viewer)
     assert exc_info.value.status_code == 403
+
+
+def test_me_works_for_seeded_admin_with_local_domain(client: TestClient, session: Session) -> None:
+    # scripts.seed creates admin@cinema.local; such a stored address must not break responses.
+    admin = User(email="admin@cinema.local", password_hash="x", display_name="Admin",
+                 role=UserRole.ADMIN)  # fmt: skip
+    session.add(admin)
+    session.commit()
+    token = create_access_token(admin.id, UserRole.ADMIN, Settings.instance())
+
+    response = client.get("/api/v1/me", headers=auth_header(token))
+    assert response.status_code == 200
+    assert response.json()["email"] == "admin@cinema.local"
