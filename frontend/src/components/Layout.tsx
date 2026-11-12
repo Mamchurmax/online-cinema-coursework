@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useApiHealth } from "../hooks/useApiHealth";
 
 export function Layout() {
+  const { user } = useAuth();
   return (
     <div className="app">
       <header className="header">
@@ -18,6 +19,11 @@ export function Layout() {
             <NavLink to="/" end className="nav__link">
               Каталог
             </NavLink>
+            {user && (
+              <NavLink to="/history" className="nav__link">
+                Історія
+              </NavLink>
+            )}
           </nav>
           <UserMenu />
         </div>

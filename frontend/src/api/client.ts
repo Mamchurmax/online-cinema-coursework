@@ -67,10 +67,12 @@ interface RequestOptions {
   json?: unknown;
   form?: Record<string, string>;
   signal?: AbortSignal;
+  /** Lets the request finish after the page is closed (saving playback progress). */
+  keepalive?: boolean;
 }
 
 export async function apiRequest<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
-  const { params, json, form, signal } = options;
+  const { params, json, form, signal, keepalive } = options;
   const query = params ? toSearchParams(params).toString() : "";
   const headers: Record<string, string> = { Accept: "application/json" };
   const token = tokenStore.get();
@@ -89,6 +91,7 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
     headers,
     body,
     signal,
+    keepalive,
   });
 
   if (!response.ok) {

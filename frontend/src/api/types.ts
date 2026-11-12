@@ -91,4 +91,19 @@ export interface PlaybackInfo {
   plan_name: string;
   max_quality: string;
   ad: { name: string; url: string } | null;
+  resume_position_sec: number;
+}
+
+export interface HistoryEntry {
+  video_asset_id: number;
+  title_id: number;
+  title: string;
+  type: TitleType;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  episode: { id: number; season_number: number; number: number; name: string } | null;
+  progress_sec: number;
+  duration_sec: number;
+  completed: boolean;
+  last_watched_at: string;
 }

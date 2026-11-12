@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PlaybackInfo } from "../../api/types";
+import { formatClock } from "../../utils/format";
 import { useHls } from "./useHls";
+import { useProgressTracker } from "./useProgressTracker";
 
 interface VideoPlayerProps {
   info: PlaybackInfo;
@@ -76,6 +78,17 @@ function AdPlayer({ url, name, onFinished }: { url: string; name: string; onFini
 function MainPlayer({ info, title, poster }: { info: PlaybackInfo; title: string; poster?: string | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hls = useHls(videoRef, info.master_url);
+  useProgressTracker(videoRef, info.asset_id);
+
+  // Continue from where the viewer stopped last time, with a way back to the start.
+  const resumeAt = info.resume_position_sec;
+  const [showResume, setShowResume] = useState(resumeAt > 0);
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!showResume) return;
+    const timer = setTimeout(() => setShowResume(false), 8000);
+    return () => clearTimeout(timer);
+  }, [showResume]);
 
   return (
     <>
@@ -88,7 +101,27 @@ function MainPlayer({ info, title, poster }: { info: PlaybackInfo; title: string
           autoPlay // the viewer has just pressed "Watch"; if the browser blocks it, controls remain
           poster={poster ?? undefined}
           aria-label={title}
+          onLoadedMetadata={(event) => {
+            if (resumeAt > 0 && !resumed.current) {
+              resumed.current = true;
+              event.currentTarget.currentTime = resumeAt;
+            }
+          }}
         />
+        {showResume && (
+          <div className="player__resume" role="status">
+            Продовжуємо з {formatClock(resumeAt)}
+            <button
+              className="button button--ghost button--small"
+              onClick={() => {
+                if (videoRef.current) videoRef.current.currentTime = 0;
+                setShowResume(false);
+              }}
+            >
+              З початку
+            </button>
+          </div>
+        )}
         {hls.error && (
           <div className="player__error" role="alert">
             {hls.error}
