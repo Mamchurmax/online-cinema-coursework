@@ -1,5 +1,6 @@
-import { Link, NavLink, Outlet } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 
+import { useAuth } from "../auth/AuthProvider";
 import { useApiHealth } from "../hooks/useApiHealth";
 
 export function Layout() {
@@ -18,6 +19,7 @@ export function Layout() {
               Каталог
             </NavLink>
           </nav>
+          <UserMenu />
         </div>
       </header>
 
@@ -31,6 +33,40 @@ export function Layout() {
           <ApiStatus />
         </div>
       </footer>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const { user, isLoading, logout } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <div className="user-menu" aria-busy="true" />;
+
+  if (!user) {
+    const onAuthPage = ["/login", "/register"].includes(location.pathname);
+    const next = onAuthPage ? "" : `?next=${encodeURIComponent(location.pathname + location.search)}`;
+    return (
+      <div className="user-menu">
+        <Link to={`/login${next}`} className="nav__link">
+          Увійти
+        </Link>
+        <Link to={`/register${next}`} className="button button--small">
+          Реєстрація
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="user-menu">
+      <span className="user-menu__name" title={user.email}>
+        {user.display_name}
+        {user.role === "admin" && <span className="user-menu__role">адмін</span>}
+      </span>
+      <button className="button button--ghost button--small" onClick={logout}>
+        Вийти
+      </button>
     </div>
   );
 }

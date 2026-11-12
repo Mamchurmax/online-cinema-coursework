@@ -68,3 +68,25 @@ export interface CatalogFilters {
   page?: number;
   page_size?: number;
 }
+
+export type UserRole = "user" | "admin";
+
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  role: UserRole;
+}
+
+export interface PlaybackInfo {
+  asset_id: number;
+  master_url: string;
+  duration_sec: number;
+  qualities: string[];
+  locked_qualities: string[];
+  plan_code: string;
+  plan_name: string;
+  max_quality: string;
+  ad: { name: string; url: string } | null;
+}
