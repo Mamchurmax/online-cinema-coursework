@@ -12,6 +12,9 @@ type Cell = str | int | float
 type MetricFormat = Literal["number", "money", "percent", "hours"]
 type ChartKind = Literal["bar", "hbar", "line", "pie"]
 
+# Longer periods are charted by month, so a year is 12 bars instead of 365.
+MONTHLY_AFTER_DAYS = 92
+
 
 @dataclass(frozen=True)
 class ReportPeriod:
@@ -31,6 +34,30 @@ class ReportPeriod:
 
     def days(self) -> list[date]:
         return [self.start + timedelta(days=i) for i in range((self.end - self.start).days + 1)]
+
+    @property
+    def by_month(self) -> bool:
+        return (self.end - self.start).days + 1 > MONTHLY_AFTER_DAYS
+
+    @property
+    def bucket_name(self) -> str:
+        """For chart titles: "Дохід по днях" / "Дохід по місяцях"."""
+        return "місяцях" if self.by_month else "днях"
+
+    def buckets(self) -> list[date]:
+        """Chart points: every day, or the first day of every month."""
+        return list(dict.fromkeys(self._bucket(day) for day in self.days()))
+
+    def bucket_of(self, moment: datetime) -> date | None:
+        day = day_of(moment)
+        return self._bucket(day) if self.start <= day <= self.end else None
+
+    def label(self, bucket: date) -> str:
+        """Chart label: 2026-11-05 for days, 2026-11 for months."""
+        return bucket.isoformat()[:7] if self.by_month else bucket.isoformat()
+
+    def _bucket(self, day: date) -> date:
+        return day.replace(day=1) if self.by_month else day
 
 
 def day_of(moment: datetime) -> date:

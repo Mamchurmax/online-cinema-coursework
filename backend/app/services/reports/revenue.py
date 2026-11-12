@@ -16,7 +16,6 @@ from app.services.reports.result import (
     ReportPeriod,
     Series,
     Table,
-    day_of,
 )
 
 STATUS_LABELS = {
@@ -41,7 +40,7 @@ class PlanRevenue:
 
 @dataclass
 class RevenueData:
-    daily: dict[date, Decimal]
+    daily: dict[date, Decimal]  # per day or per month, see ReportPeriod.by_month
     plans: list[PlanRevenue]  # biggest revenue first
     statuses: Counter[PaymentStatus]
     revenue: Decimal
@@ -67,7 +66,7 @@ class RevenueReport(BaseReport[RevenueRaw, RevenueData]):
         )
 
     def aggregate(self, raw: RevenueRaw, period: ReportPeriod) -> RevenueData:
-        daily = {day: Decimal(0) for day in period.days()}
+        daily = {bucket: Decimal(0) for bucket in period.buckets()}
         plans: dict[str, PlanRevenue] = {}
         statuses: Counter[PaymentStatus] = Counter()
         paying: set[int] = set()
@@ -75,9 +74,8 @@ class RevenueReport(BaseReport[RevenueRaw, RevenueData]):
             statuses[payment.status] += 1
             if payment.status is not PaymentStatus.SUCCEEDED:
                 continue
-            day = day_of(payment.created_at)
-            if day in daily:
-                daily[day] += payment.amount
+            if (bucket := period.bucket_of(payment.created_at)) is not None:
+                daily[bucket] += payment.amount
             plan = plans.setdefault(payment.plan_code, PlanRevenue(payment.plan_name, 0, Decimal(0)))
             plan.payments += 1
             plan.revenue += payment.amount
@@ -107,8 +105,9 @@ class RevenueReport(BaseReport[RevenueRaw, RevenueData]):
         ]
         charts = [
             Chart(
-                "daily_revenue", "Дохід по днях", "bar", "day", [Series("revenue", "Дохід, грн")],
-                [{"day": d.isoformat(), "revenue": money(v)} for d, v in data.daily.items()],
+                "daily_revenue", f"Дохід по {period.bucket_name}", "bar", "day",
+                [Series("revenue", "Дохід, грн")],
+                [{"day": period.label(d), "revenue": money(v)} for d, v in data.daily.items()],
             ),  # fmt: skip
             Chart(
                 "by_plan", "Дохід за тарифами", "pie", "plan", [Series("revenue", "Дохід, грн")],

@@ -15,7 +15,6 @@ from app.services.reports.result import (
     ReportPeriod,
     Series,
     Table,
-    day_of,
     hours,
 )
 
@@ -48,7 +47,7 @@ class UserStats:
 
 @dataclass
 class ActivityData:
-    days: list[DayStats]
+    days: list[DayStats]  # per day or per month, see ReportPeriod.by_month
     users: list[UserStats]  # most watch time first
     users_total: int
     new_users: int
@@ -72,14 +71,14 @@ class ActivityReport(BaseReport[ActivityRaw, ActivityData]):
         )
 
     def aggregate(self, raw: ActivityRaw, period: ReportPeriod) -> ActivityData:
-        days = {day: DayStats(day) for day in period.days()}
+        days = {bucket: DayStats(bucket) for bucket in period.buckets()}
         for moment in raw.registrations:
-            if (stats := days.get(day_of(moment))) is not None:
+            if (stats := days.get(period.bucket_of(moment))) is not None:
                 stats.new_users += 1
 
         users: dict[int, UserStats] = {}
         for watch in raw.watches:
-            if (stats := days.get(day_of(watch.watched_at))) is not None:
+            if (stats := days.get(period.bucket_of(watch.watched_at))) is not None:
                 stats.active.add(watch.user_id)
                 stats.watch_sec += watch.watched_sec
             info = raw.users.get(watch.user_id)
@@ -111,15 +110,15 @@ class ActivityReport(BaseReport[ActivityRaw, ActivityData]):
         ]
         charts = [
             Chart(
-                "daily_users", "Користувачі по днях", "line", "day",
+                "daily_users", f"Користувачі по {period.bucket_name}", "line", "day",
                 [Series("active", "Активні"), Series("new_users", "Нові")],
-                [{"day": d.day.isoformat(), "active": len(d.active), "new_users": d.new_users}
+                [{"day": period.label(d.day), "active": len(d.active), "new_users": d.new_users}
                  for d in data.days],
             ),  # fmt: skip
             Chart(
-                "daily_hours", "Години перегляду по днях", "bar", "day",
+                "daily_hours", f"Години перегляду по {period.bucket_name}", "bar", "day",
                 [Series("hours", "Годин")],
-                [{"day": d.day.isoformat(), "hours": hours(d.watch_sec)} for d in data.days],
+                [{"day": period.label(d.day), "hours": hours(d.watch_sec)} for d in data.days],
             ),  # fmt: skip
         ]
         table = Table(
@@ -142,6 +141,7 @@ class ActivityReport(BaseReport[ActivityRaw, ActivityData]):
     def notes(self, data: ActivityData) -> list[str]:
         return [
             "Історія переглядів зберігає останню позицію в кожному відео, тому день активності — "
-            "це день останнього перегляду, а час перегляду — досягнута позиція.",
+            "це день останнього перегляду, а час — досягнута позиція (для переглянутих до кінця — "
+            "уся тривалість відео).",
             "Дні рахуються за UTC.",
         ]

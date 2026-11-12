@@ -148,10 +148,18 @@ def test_concrete_reports_only_fill_in_the_steps() -> None:
         assert report.build is BaseReport.build  # the template itself is not overridden
 
 
-def test_period_bounds_and_days() -> None:
-    period = ReportPeriod(*WEEK)
-    assert (period.start_at, period.end_at) == (at(1, 0), at(8, 0))
-    assert len(period.days()) == 7
+def test_period_bounds_and_buckets() -> None:
+    week = ReportPeriod(*WEEK)
+    assert (week.start_at, week.end_at) == (at(1, 0), at(8, 0))
+    assert len(week.days()) == len(week.buckets()) == 7
+    assert (week.bucket_of(at(3, 23)), week.bucket_of(at(8, 0))) == (date(2026, 11, 3), None)
+    assert week.label(date(2026, 11, 3)) == "2026-11-03"
+
+    year = ReportPeriod(date(2025, 11, 15), date(2026, 11, 14))
+    assert year.by_month and year.bucket_name == "місяцях"
+    assert len(year.buckets()) == 13  # Nov 2025 ... Nov 2026
+    assert year.bucket_of(at(20, month=5)) == date(2026, 5, 1)
+    assert year.label(date(2026, 5, 1)) == "2026-05"
 
 
 # --- reports -----------------------------------------------------------------------
