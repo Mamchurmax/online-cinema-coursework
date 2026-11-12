@@ -29,3 +29,7 @@ media/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Coursework report and its screenshots (kept locally, not published)
+docs/report/
+docs/screenshots/
