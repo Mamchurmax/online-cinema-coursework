@@ -49,6 +49,10 @@ class TitleRepository:
     def add(self, title: Title) -> None:
         self._db.add(title)
 
+    def delete(self, title: Title) -> None:
+        self._db.delete(title)
+        self._db.commit()
+
     def commit(self) -> None:
         self._db.commit()
 
@@ -69,6 +73,9 @@ class GenreRepository:
     def list_all(self) -> Sequence[Genre]:
         return self._db.scalars(select(Genre).order_by(Genre.name)).all()
 
+    def get_many(self, ids: list[int]) -> Sequence[Genre]:
+        return self._db.scalars(select(Genre).where(Genre.id.in_(ids))).all() if ids else []
+
     def add(self, genre: Genre) -> None:
         self._db.add(genre)
         self._db.flush()
@@ -83,6 +90,11 @@ class CountryRepository:
 
     def list_all(self) -> Sequence[Country]:
         return self._db.scalars(select(Country).order_by(Country.name)).all()
+
+    def get_many(self, codes: list[str]) -> Sequence[Country]:
+        if not codes:
+            return []
+        return self._db.scalars(select(Country).where(Country.code.in_(codes))).all()
 
     def add(self, country: Country) -> None:
         self._db.add(country)
