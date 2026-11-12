@@ -1327,3 +1327,45 @@ a {
     white-space: nowrap;
   }
 }
+
+/* Recommendations */
+.recommendations {
+  margin-bottom: 36px;
+}
+
+.recommendations__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.recommendations__header .section-title {
+  margin: 0;
+}
+
+.recommendations__row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 170px);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+}
+
+.recommendations__item {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.recommendations__reason {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--accent-hover);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

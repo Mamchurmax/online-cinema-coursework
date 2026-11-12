@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import type { CatalogFilters } from "../api/types";
 import { ContinueWatching } from "../components/ContinueWatching";
 import { Pagination } from "../components/Pagination";
+import { Recommendations } from "../components/Recommendations";
 import { StateMessage } from "../components/StateMessage";
 import { TitleCard, TitleCardSkeleton } from "../components/TitleCard";
 import { useTitles } from "../hooks/useCatalog";
@@ -31,7 +32,12 @@ export function CatalogPage() {
 
   return (
     <section>
-      {!hasActiveFilters(filters) && filters.page === 1 && <ContinueWatching />}
+      {!hasActiveFilters(filters) && filters.page === 1 && (
+        <>
+          <ContinueWatching />
+          <Recommendations />
+        </>
+      )}
       <div className="page-header">
         <h1 className="page-title">Каталог</h1>
         {data && (
