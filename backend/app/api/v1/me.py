@@ -5,13 +5,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.repositories.catalog_repository import TitleRepository
+from app.repositories.favorite_repository import FavoriteRepository
 from app.repositories.history_repository import WatchHistoryRepository
 from app.repositories.media_repository import VideoAssetRepository
 from app.repositories.notification_repository import NotificationRepository
+from app.schemas.catalog import TitleListItem
 from app.schemas.history import HistoryEntry, ProgressUpdate
 from app.schemas.notification import MarkReadRequest, NotificationList, UnreadCount
 from app.schemas.user import UserRead
 from app.services.events.setup import build_event_bus
+from app.services.favorites.favorite_service import FavoriteService, TitleNotFoundError
 from app.services.history.history_service import (
     HistoryEntryNotFoundError,
     VideoNotFoundError,
@@ -36,6 +40,13 @@ def get_notification_service(db: DbSession) -> NotificationService:
 
 
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
+
+
+def get_favorite_service(db: DbSession) -> FavoriteService:
+    return FavoriteService(FavoriteRepository(db), TitleRepository(db))
+
+
+FavoriteServiceDep = Annotated[FavoriteService, Depends(get_favorite_service)]
 
 
 @router.get("", response_model=UserRead)
@@ -99,3 +110,30 @@ def mark_notifications_read(
     body: MarkReadRequest, user: CurrentUser, notifications: NotificationServiceDep
 ):
     return UnreadCount(unread_count=notifications.mark_read(user, body.ids))
+
+
+@router.get("/favorites", response_model=list[TitleListItem])
+def read_favorites(user: CurrentUser, favorites: FavoriteServiceDep):
+    """Favorite titles, most recently added first."""
+    return favorites.titles(user)
+
+
+@router.get("/favorites/ids", response_model=list[int])
+def read_favorite_ids(user: CurrentUser, favorites: FavoriteServiceDep):
+    """Just the ids — lets the catalog mark hearts without loading full titles."""
+    return favorites.title_ids(user)
+
+
+@router.put("/favorites/{title_id}", status_code=status.HTTP_204_NO_CONTENT)
+def add_favorite(title_id: int, user: CurrentUser, favorites: FavoriteServiceDep):
+    try:
+        favorites.add(user, title_id)
+    except TitleNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Title not found") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/favorites/{title_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_favorite(title_id: int, user: CurrentUser, favorites: FavoriteServiceDep):
+    favorites.remove(user, title_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
