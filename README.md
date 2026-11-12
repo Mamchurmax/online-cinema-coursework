@@ -224,7 +224,13 @@ State веде платіж → Observer активує підписку.
 | Файл | Зміст |
 |---|---|
 | `use-case.puml` | варіанти використання (клієнт і адміністратор) |
-| `class.puml` | діаграма класів, патерни виділені кольорами (легенда праворуч угорі) |
+| `class.puml` | діаграма класів усієї системи (огляд: усі класи й зв'язки, без полів і методів) |
+| `class-catalog.puml` | каталог та імпорт: Builder, Adapter, Singleton |
+| `class-playback.puml` | перегляд: Strategy (тарифні політики), Proxy, Observer |
+| `class-billing.puml` | оплата й підписки: Factory Method, State, Observer |
+| `class-recommendations.puml` | рекомендації: Strategy |
+| `class-reports.puml` | звіти: Template Method |
+| `_style.iuml` | спільний стиль: кольори патернів і легенда (однакова на всіх діаграмах класів) |
 | `er.puml` | схема бази даних |
 | `sequence-playback.puml`, `sequence-payment.puml` | перегляд відео й оплата підписки |
 

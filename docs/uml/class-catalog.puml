@@ -1,0 +1,138 @@
+@startuml class-catalog
+!include _style.iuml
+title Каталог і імпорт: Builder, Adapter, Singleton
+
+package "api.v1" {
+  class CatalogRouter <<router>> {
+    + search_titles(filters : CatalogFilters) : TitlePage
+    + get_title(title_id) : TitleDetail
+    + list_genres() : list[GenreRead]
+    + list_countries() : list[CountryRead]
+  }
+  class AdminRouter <<router>> {
+    + import_title(tmdb_id, type) : TitleDetail
+  }
+}
+
+package "core" {
+  class Settings <<Singleton>> SINGLETON {
+    - {static} _instance : Settings
+    + database_url : str
+    + tmdb_api_token : str
+    + {static} instance() : Settings
+  }
+}
+
+package "services.catalog" {
+  class CatalogService <<Director>> BUILDER {
+    + search(filters : CatalogFilters) : TitlePage
+    + get_title(title_id) : Title
+    + list_genres() : list[Genre]
+    + list_countries() : list[Country]
+  }
+  class CatalogQueryBuilder <<Builder>> BUILDER {
+    - _conditions : list
+    - _order_by : list
+    + with_text(text) : Self
+    + with_type(type) : Self
+    + with_genres(ids) : Self
+    + with_countries(codes) : Self
+    + released_between(year_from, year_to) : Self
+    + with_min_rating(rating) : Self
+    + sorted_by(sort, order) : Self
+    + paginate(page, size) : Self
+    + build() : CatalogQuery
+  }
+  class CatalogQuery <<Product>> BUILDER {
+    + statement : Select
+    + count_statement : Select
+    + page : int
+    + page_size : int
+  }
+}
+
+package "services.importers" {
+  interface CatalogSource <<Target>> ADAPTER {
+    + get_movie(external_id) : TitleData
+    + get_series(external_id, max_seasons) : TitleData
+    + get_popular_ids(type, pages) : list[int]
+    + get_anime_ids(type, pages) : list[int]
+  }
+  class TmdbAdapter <<Adapter>> ADAPTER {
+    - _client : TmdbClient
+    + get_movie(external_id) : TitleData
+    + get_series(external_id, max_seasons) : TitleData
+    + get_popular_ids(type, pages) : list[int]
+    + get_anime_ids(type, pages) : list[int]
+  }
+  class TmdbClient <<Adaptee>> ADAPTER {
+    + movie(id, language) : dict
+    + tv(id, language) : dict
+    + tv_season(id, number, language) : dict
+    + popular(media, page, language) : dict
+    + discover(media, page, language, filters) : dict
+    + countries(language) : list[dict]
+  }
+  class TitleData <<dataclass>> {
+    + external_id : int
+    + type : TitleType
+    + title : str
+    + genres : list[GenreData]
+    + countries : list[CountryData]
+    + seasons : list[SeasonData]
+  }
+  class CatalogImportService {
+    + import_movies(ids) : ImportReport
+    + import_series(ids, max_seasons) : ImportReport
+    + import_popular(type, pages) : ImportReport
+    + import_anime(type, pages) : ImportReport
+  }
+}
+
+package "repositories" {
+  class TitleRepository {
+    + get_with_details(id) : Title
+    + get_by_tmdb_id(tmdb_id) : Title
+    + find_page(statement, count_statement) : (list[Title], int)
+  }
+  class GenreRepository
+  class CountryRepository
+}
+
+package "models" {
+  class Title {
+    + type : TitleType
+    + title : str
+    + release_year : int
+    + rating : Decimal
+    + watch_count : int
+  }
+  class Genre
+  class Country
+}
+
+CatalogRouter --> CatalogService
+CatalogService ..> CatalogQueryBuilder : керує кроками
+CatalogQueryBuilder ..> CatalogQuery : build()
+CatalogService --> TitleRepository
+TitleRepository ..> CatalogQuery : виконує
+
+AdminRouter ..> CatalogImportService : імпорт одного тайтлу
+CatalogImportService --> CatalogSource : працює через інтерфейс
+TmdbAdapter ..|> CatalogSource
+TmdbAdapter o--> TmdbClient : адаптує JSON TMDB
+TmdbAdapter ..> TitleData : створює
+CatalogImportService --> TitleRepository
+CatalogImportService --> GenreRepository
+CatalogImportService --> CountryRepository
+AdminRouter ..> Settings : tmdb_api_token для TmdbClient
+
+TitleRepository ..> Title
+Title "*" o-- "*" Genre
+Title "*" o-- "*" Country
+
+note bottom of CatalogQueryBuilder
+  Кожен фільтр — окремий крок; кроки з
+  порожнім значенням нічого не додають.
+end note
+@enduml

@@ -1,0 +1,143 @@
+@startuml class-playback
+!include _style.iuml
+title Перегляд: Strategy (тарифні політики), Proxy, Observer (перегляд)
+
+package "api.v1" {
+  class PlaybackRouter <<router>> {
+    + start_title(title_id) : PlaybackInfo
+    + start_episode(episode_id) : PlaybackInfo
+    + master_playlist(asset_id) : m3u8
+  }
+  class MeRouter <<router>> {
+    + save_progress(asset_id, position_sec) : HistoryEntry
+    + continue_watching() : list[HistoryEntry]
+  }
+}
+
+package "services.streaming" {
+  class PlaybackService <<Context>> {
+    + start_title(user, title_id) : PlaybackSession
+    + start_episode(user, episode_id) : PlaybackSession
+    + master_playlist(user, asset_id) : str
+    - _policy(user) : PlaybackPolicy
+    - _pick_ad() : AdInfo
+  }
+  abstract class PlaybackPolicy <<Strategy>> STRATEGY {
+    + plan : Plan
+    + max_quality : str
+    + allowed_qualities(available) : list[str]
+    + {abstract} requires_preroll_ad() : bool
+  }
+  class FreePolicy <<ConcreteStrategy>> STRATEGY {
+    + requires_preroll_ad() : bool = true
+  }
+  class PremiumPolicy <<ConcreteStrategy>> STRATEGY {
+    + requires_preroll_ad() : bool = false
+  }
+  abstract class StreamSource <<Subject>> PROXY {
+    + {abstract} master_playlist(asset) : str
+  }
+  class HlsFileStreamSource <<RealSubject>> PROXY {
+    - _hls_root : Path
+    + master_playlist(asset) : str
+  }
+  class StreamAccessProxy <<Proxy>> PROXY {
+    - _source : StreamSource
+    - _policy : PlaybackPolicy
+    + master_playlist(asset) : str
+  }
+  class PlaybackSession <<dataclass>> {
+    + asset_id : int
+    + master_url : str
+    + qualities : list[str]
+    + locked_qualities : list[str]
+    + ad : AdInfo
+    + resume_position_sec : int
+  }
+}
+
+package "services.history" {
+  class WatchHistoryService {
+    + save_progress(user, asset_id, position) : WatchHistory
+    + resume_position(user, asset_id) : int
+    + continue_watching(user) : list[WatchHistory]
+    + history(user) : list[WatchHistory]
+  }
+}
+
+package "services.events" {
+  interface EventPublisher <<Subject>> OBSERVER {
+    + publish(event)
+  }
+  class EventBus OBSERVER
+  class StatisticsListener <<Observer>> OBSERVER {
+    + on_title_watched(event)
+  }
+  class TitleWatched <<event>> {
+    + user_id : int
+    + title_id : int
+    + video_asset_id : int
+  }
+}
+
+package "services.billing" {
+  class PlanService {
+    + current_plan(user_id) : Plan
+  }
+}
+
+package "repositories" {
+  class VideoAssetRepository
+  class AdRepository
+  class WatchHistoryRepository
+  class TitleRepository
+}
+
+package "models" {
+  class Plan {
+    + max_quality : str
+    + has_ads : bool
+  }
+  class VideoAsset {
+    + hls_path : str
+    + qualities : list[str]
+    + duration_sec : int
+  }
+  class WatchHistory {
+    + progress_sec : int
+    + completed : bool
+  }
+}
+
+PlaybackRouter --> PlaybackService
+PlaybackService --> PlanService : тариф користувача
+PlaybackService ..> PlaybackPolicy : обирає за тарифом
+PlaybackService ..> StreamSource : працює через інтерфейс
+PlaybackService ..> PlaybackSession : повертає
+PlaybackService --> VideoAssetRepository
+PlaybackService --> AdRepository : pre-roll для Free
+PlaybackService --> WatchHistoryService : позиція продовження
+FreePolicy --|> PlaybackPolicy
+PremiumPolicy --|> PlaybackPolicy
+PlaybackPolicy --> Plan
+HlsFileStreamSource --|> StreamSource
+StreamAccessProxy --|> StreamSource
+StreamAccessProxy o--> HlsFileStreamSource : делегує
+StreamAccessProxy --> PlaybackPolicy : дозволені якості
+HlsFileStreamSource ..> VideoAsset : master.m3u8
+
+MeRouter --> WatchHistoryService : /me/history
+WatchHistoryService --> WatchHistoryRepository
+WatchHistoryService --> EventPublisher : TitleWatched
+EventBus ..|> EventPublisher
+EventBus o--> "*" StatisticsListener
+EventBus ..> TitleWatched : розсилає
+StatisticsListener --> TitleRepository : watch_count + 1
+WatchHistoryRepository ..> WatchHistory
+WatchHistory "*" --> "1" VideoAsset
+
+note right of StreamAccessProxy
+  На Free з master-плейлиста зникає
+  варіант 1080p — плеєр його не бачить.
+end note
+@enduml

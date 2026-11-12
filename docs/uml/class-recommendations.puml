@@ -1,0 +1,81 @@
+@startuml class-recommendations
+!include _style.iuml
+title Рекомендації: Strategy
+
+package "api.v1" {
+  class RecommendationsRouter <<router>> {
+    + recommendations(strategy, limit) : list[RecommendationRead]
+  }
+}
+
+package "services.recommendations" {
+  class RecommendationService <<Context>> {
+    - _strategies : dict[str, RecommendationStrategy]
+    + strategy_codes() : list[str]
+    + recommend(user, strategy, limit) : list[Recommendation]
+    + profile(user) : UserProfile
+  }
+  abstract class RecommendationStrategy <<Strategy>> STRATEGY {
+    + code : str
+    + {abstract} recommend(profile, limit) : list[Recommendation]
+  }
+  class GenreBasedStrategy <<ConcreteStrategy>> STRATEGY {
+    + recommend(profile, limit)
+  }
+  class PopularityStrategy <<ConcreteStrategy>> STRATEGY {
+    + recommend(profile, limit)
+  }
+  class HybridStrategy <<ConcreteStrategy>> STRATEGY {
+    - _parts : list[(RecommendationStrategy, float)]
+    + recommend(profile, limit)
+  }
+  class UserProfile <<dataclass>> {
+    + genre_weights : Counter[int]
+    + seen_title_ids : set[int]
+    + is_empty : bool
+  }
+  class Recommendation <<dataclass>> {
+    + title : Title
+    + score : float
+    + reason : str
+  }
+}
+
+package "repositories" {
+  class RecommendationRepository {
+    + viewing_signals(user_id) : list[ViewingSignal]
+    + genres_of(title_ids) : dict[int, list[int]]
+    + titles_with_genres(genre_ids, exclude, limit) : list[Title]
+    + popular_titles(exclude, limit) : list[Title]
+  }
+}
+
+package "models" {
+  class WatchHistory
+  class Favorite
+  class Title {
+    + rating : Decimal
+    + watch_count : int
+  }
+}
+
+RecommendationsRouter --> RecommendationService
+RecommendationService o--> "3" RecommendationStrategy : обирає за кодом
+RecommendationService ..> UserProfile : будує з історії
+RecommendationService --> RecommendationRepository
+GenreBasedStrategy --|> RecommendationStrategy
+PopularityStrategy --|> RecommendationStrategy
+HybridStrategy --|> RecommendationStrategy
+HybridStrategy o--> "*" RecommendationStrategy : 70% жанри + 30% популярність
+GenreBasedStrategy --> RecommendationRepository
+PopularityStrategy --> RecommendationRepository
+RecommendationStrategy ..> Recommendation : повертає
+RecommendationRepository ..> WatchHistory
+RecommendationRepository ..> Favorite
+RecommendationRepository ..> Title
+
+note bottom of PopularityStrategy
+  watch_count оновлює StatisticsListener
+  (Observer) після перегляду до кінця.
+end note
+@enduml

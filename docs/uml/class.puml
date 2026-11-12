@@ -1,37 +1,13 @@
 @startuml class
-title Онлайн-кінотеатр — діаграма класів (реалізовані частини)
+!include _style.iuml
+title Онлайн-кінотеатр — діаграма класів усієї системи (огляд)
 
-' The diagram grows together with the code. Each GoF pattern has its own colour.
-!define SINGLETON #FFE8B0
-!define ADAPTER #CDEFD5
-!define BUILDER #D6E4FF
-!define STRATEGY #FBDDEB
-!define PROXY #E6DBF7
-!define OBSERVER #FFDCC2
-!define FACTORY #C9EEF2
-!define STATE #E2EFC4
-!define TEMPLATE #FFF3A8
-
-skinparam classAttributeIconSize 0
-skinparam packageStyle rectangle
-skinparam class {
-  BackgroundColor #FFFFFF
-  BorderColor #3B6EA8
-}
-hide empty members
-
-legend top right
-  |= Колір |= Патерн |
-  | <back:SINGLETON>      </back> | Singleton |
-  | <back:ADAPTER>      </back> | Adapter |
-  | <back:BUILDER>      </back> | Builder |
-  | <back:STRATEGY>      </back> | Strategy |
-  | <back:PROXY>      </back> | Proxy |
-  | <back:OBSERVER>      </back> | Observer |
-  | <back:FACTORY>      </back> | Factory Method |
-  | <back:STATE>      </back> | State |
-  | <back:TEMPLATE>      </back> | Template Method |
-endlegend
+' Overview: every class and relation, members hidden. Members are shown in the
+' detailed views: class-catalog, class-playback, class-billing,
+' class-recommendations, class-reports.
+hide members
+left to right direction
+skinparam ranksep 70
 
 package "core" {
   class Settings <<Singleton>> SINGLETON {
@@ -56,11 +32,6 @@ package "api.v1" {
     + get_title(title_id) : TitleDetail
     + list_genres() : list[GenreRead]
     + list_countries() : list[CountryRead]
-  }
-  class MeRouter2 as "MeRouter (history)" <<router>> {
-    + read_history() : list[HistoryEntry]
-    + continue_watching() : list[HistoryEntry]
-    + save_progress(asset_id, position_sec) : HistoryEntry
   }
   class RecommendationsRouter <<router>> {
     + recommendations(strategy, limit) : list[RecommendationRead]
@@ -181,13 +152,13 @@ package "services" {
   }
 
   package "events" {
-    class EventBus <<Subject>> OBSERVER {
+    class EventBus OBSERVER {
       - _listeners : dict[type, list[Listener]]
       + subscribe(event_type, listener)
       + unsubscribe(event_type, listener)
       + publish(event)
     }
-    interface EventPublisher OBSERVER {
+    interface EventPublisher <<Subject>> OBSERVER {
       + publish(event)
     }
     class StatisticsListener <<Observer>> OBSERVER {
@@ -205,6 +176,8 @@ package "services" {
     class DomainEvent <<event>>
     class TitleWatched <<event>>
     class PaymentSucceeded <<event>>
+    class PaymentFailed <<event>>
+    class SubscriptionExpiring <<event>>
     class SubscriptionActivated <<event>>
   }
 
@@ -504,7 +477,9 @@ package "models" {
 
 AuthRouter --> AuthService
 MeRouter ..> AuthService : get_current_user
-MeRouter2 --> WatchHistoryService
+MeRouter --> WatchHistoryService : /me/history
+MeRouter --> FavoriteService : /me/favorites
+MeRouter --> NotificationService : /me/notifications
 AuthService --> UserRepository
 AuthService ..> Settings
 UserRepository ..> User
@@ -575,6 +550,8 @@ EventBus o--> "*" SubscriptionActivationListener
 TitleWatched --|> DomainEvent
 PaymentSucceeded --|> DomainEvent
 SubscriptionActivated --|> DomainEvent
+PaymentFailed --|> DomainEvent
+SubscriptionExpiring --|> DomainEvent
 WatchHistoryService --> EventPublisher : TitleWatched
 StatisticsListener --> TitleRepository : watch_count + 1
 SubscriptionActivationListener --> SubscriptionService : activate()

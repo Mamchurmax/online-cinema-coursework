@@ -1,0 +1,145 @@
+@startuml class-billing
+!include _style.iuml
+title Оплата й підписки: Factory Method, State, Observer
+
+package "api.v1" {
+  class BillingRouter <<router>> {
+    + list_plans() : list[PlanRead]
+    + pay(plan_code, scenario) : PaymentRead
+    + simulate_bank_response(payment_id, approved) : PaymentRead
+    + resolve_payment(payment_id, approved) : PaymentRead
+  }
+}
+
+package "services.payments" {
+  class PaymentService {
+    + pay(user, plan_code, scenario) : Payment
+    + simulate_bank_response(user, id, approved) : Payment
+    + resolve_by_admin(id, approved) : Payment
+    + pending() : list[Payment]
+  }
+  abstract class PaymentProviderFactory <<Creator>> FACTORY {
+    + {abstract} create_provider() : PaymentProvider
+    + provider() : PaymentProvider
+  }
+  class MockPaymentProviderFactory <<ConcreteCreator>> FACTORY {
+    + create_provider() : PaymentProvider
+  }
+  abstract class PaymentProvider <<Product>> FACTORY {
+    + code : str
+    + {abstract} charge(payment) : ChargeResult
+    + {abstract} bank_response(payment, approved) : ChargeResult
+  }
+  class MockPaymentProvider <<ConcreteProduct>> FACTORY {
+    + charge(payment) : ChargeResult
+    + bank_response(payment, approved) : ChargeResult
+  }
+  class PaymentContext <<Context>> STATE {
+    + payment : Payment
+    + state : PaymentState
+    + transition_to(state)
+    + succeed()
+    + fail()
+  }
+  abstract class PaymentState <<State>> STATE {
+    + status : PaymentStatus
+    + is_final : bool
+    + succeed(context)
+    + fail(context)
+  }
+  class PendingState <<ConcreteState>> STATE
+  class SucceededState <<ConcreteState>> STATE
+  class FailedState <<ConcreteState>> STATE
+}
+
+package "services.events" {
+  interface EventPublisher <<Subject>> OBSERVER {
+    + publish(event)
+  }
+  class EventBus OBSERVER {
+    - _listeners : dict[type, list[Listener]]
+    + subscribe(event_type, listener)
+    + unsubscribe(event_type, listener)
+    + publish(event)
+  }
+  class SubscriptionActivationListener <<Observer>> OBSERVER {
+    + on_payment_succeeded(event)
+  }
+  class NotificationListener <<Observer>> OBSERVER {
+    + on_payment_succeeded(event)
+    + on_payment_failed(event)
+    + on_subscription_activated(event)
+    + on_subscription_expiring(event)
+  }
+  abstract class DomainEvent <<event>>
+  class PaymentSucceeded <<event>>
+  class PaymentFailed <<event>>
+  class SubscriptionActivated <<event>>
+  class SubscriptionExpiring <<event>>
+}
+
+package "services.billing" {
+  class SubscriptionService {
+    + activate(user_id, plan_id) : Subscription
+    + check_expiring() : (int, int)
+  }
+}
+
+package "services.notifications" {
+  class NotificationService {
+    + notify(user_id, type, message) : Notification
+    + mark_read(user, ids) : int
+  }
+}
+
+package "models" {
+  class Payment {
+    + amount : Decimal
+    + scenario : PaymentScenario
+    + status : PaymentStatus
+  }
+  class Subscription {
+    + status : SubscriptionStatus
+    + expires_at : datetime
+  }
+  class Plan {
+    + code : str
+    + price : Decimal
+    + period_days : int
+  }
+}
+
+BillingRouter --> PaymentService
+PaymentService --> PaymentProviderFactory : factory method
+MockPaymentProviderFactory --|> PaymentProviderFactory
+MockPaymentProvider --|> PaymentProvider
+PaymentProviderFactory ..> PaymentProvider : створює
+MockPaymentProviderFactory ..> MockPaymentProvider : створює
+PaymentService ..> PaymentContext : переходи статусу
+PaymentContext o--> PaymentState : поточний стан
+PendingState --|> PaymentState
+SucceededState --|> PaymentState
+FailedState --|> PaymentState
+PaymentContext --> Payment
+PaymentService --> EventPublisher : PaymentSucceeded / PaymentFailed
+
+EventBus ..|> EventPublisher
+EventBus o--> "*" SubscriptionActivationListener
+EventBus o--> "*" NotificationListener
+PaymentSucceeded --|> DomainEvent
+PaymentFailed --|> DomainEvent
+SubscriptionActivated --|> DomainEvent
+SubscriptionExpiring --|> DomainEvent
+SubscriptionActivationListener --> SubscriptionService : activate()
+SubscriptionService --> EventPublisher : SubscriptionActivated / Expiring
+NotificationListener --> NotificationService
+SubscriptionService --> Subscription
+Subscription "*" --> "1" Plan
+Payment "*" --> "1" Plan
+
+note bottom of PaymentState
+  pending → succeeded | failed;
+  фінальні стани відхиляють
+  будь-який перехід.
+end note
+@enduml

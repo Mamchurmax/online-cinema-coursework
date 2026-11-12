@@ -1,0 +1,104 @@
+@startuml class-reports
+!include _style.iuml
+title Звіти: Template Method
+
+package "api.v1" {
+  class ReportsRouter <<router>> {
+    + list_reports() : list[ReportInfo]
+    + build_report(code, date_from, date_to) : ReportRead
+  }
+}
+
+package "services.reports" {
+  class ReportService {
+    - _reports : dict[str, type[BaseReport]]
+    + available() : list[type[BaseReport]]
+    + period(date_from, date_to) : ReportPeriod
+    + build(code, date_from, date_to) : ReportResult
+  }
+  abstract class "BaseReport[RawT, DataT]" as BaseReport <<AbstractClass>> TEMPLATE {
+    + {static} code : str
+    + {static} title : str
+    # _repository : ReportRepository
+    + build(period) : ReportResult <<final>>
+    # {abstract} collect(period) : RawT
+    # {abstract} aggregate(raw, period) : DataT
+    # {abstract} format(data, period) : ReportBody
+    # notes(data) : list[str] <<hook>>
+  }
+  class PopularityReport <<ConcreteClass>> TEMPLATE {
+    # collect(period) : PopularityRaw
+    # aggregate(raw, period) : PopularityData
+    # format(data, period) : ReportBody
+    # notes(data) : list[str]
+  }
+  class ActivityReport <<ConcreteClass>> TEMPLATE {
+    # collect(period) : ActivityRaw
+    # aggregate(raw, period) : ActivityData
+    # format(data, period) : ReportBody
+    # notes(data) : list[str]
+  }
+  class RevenueReport <<ConcreteClass>> TEMPLATE {
+    # collect(period) : RevenueRaw
+    # aggregate(raw, period) : RevenueData
+    # format(data, period) : ReportBody
+    # notes(data) : list[str]
+  }
+  class ReportPeriod <<value>> {
+    + start : date
+    + end : date
+    + by_month : bool
+    + buckets() : list[date]
+    + bucket_of(moment) : date
+  }
+  class ReportResult <<value>> {
+    + code : str
+    + title : str
+    + generated_at : datetime
+    + metrics : list[Metric]
+    + charts : list[Chart]
+    + table : Table
+    + notes : list[str]
+  }
+}
+
+package "repositories" {
+  class ReportRepository {
+    + watch_rows(start, end) : list[WatchRow]
+    + titles(ids) : dict[int, TitleInfo]
+    + genres_of(ids) : dict[int, list[str]]
+    + registrations(start, end) : list[datetime]
+    + count_users(before) : int
+    + payments(start, end) : list[PaymentRow]
+    + active_subscriptions_by_plan(at) : dict[str, int]
+  }
+}
+
+package "models" {
+  class WatchHistory
+  class User
+  class Payment
+  class Subscription
+}
+
+ReportsRouter --> ReportService
+ReportService ..> BaseReport : створює за кодом, build()
+PopularityReport --|> BaseReport
+ActivityReport --|> BaseReport
+RevenueReport --|> BaseReport
+BaseReport --> ReportRepository : collect()
+BaseReport ..> ReportResult : повертає
+ReportResult *-- ReportPeriod
+ReportRepository ..> WatchHistory
+ReportRepository ..> User
+ReportRepository ..> Payment
+ReportRepository ..> Subscription
+
+note right of BaseReport
+  build(period):
+    raw  = collect(period)
+    data = aggregate(raw, period)
+    body = format(data, period)
+    return ReportResult(..., notes(data))
+end note
+@enduml

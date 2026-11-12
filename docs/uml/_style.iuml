@@ -1,0 +1,52 @@
+' Shared style of all class diagrams: one colour per GoF pattern + the legend.
+!define SINGLETON #FFE8B0
+!define ADAPTER #CDEFD5
+!define BUILDER #D6E4FF
+!define STRATEGY #FBDDEB
+!define PROXY #E6DBF7
+!define OBSERVER #FFDCC2
+!define FACTORY #C9EEF2
+!define STATE #E2EFC4
+!define TEMPLATE #FFF3A8
+
+skinparam dpi 110
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam nodesep 40
+skinparam ranksep 50
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B6EA8
+  ArrowColor #44546A
+}
+skinparam package {
+  BorderColor #8A97A8
+  FontColor #44546A
+}
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #8A97A8
+}
+skinparam note {
+  BackgroundColor #FAFAFA
+  BorderColor #8A97A8
+}
+hide empty members
+set separator none
+
+legend top right
+  |= Колір |= Патерн GoF |
+  | <back:SINGLETON>      </back> | Singleton |
+  | <back:BUILDER>      </back> | Builder |
+  | <back:ADAPTER>      </back> | Adapter |
+  | <back:STRATEGY>      </back> | Strategy |
+  | <back:PROXY>      </back> | Proxy |
+  | <back:OBSERVER>      </back> | Observer |
+  | <back:FACTORY>      </back> | Factory Method |
+  | <back:STATE>      </back> | State |
+  | <back:TEMPLATE>      </back> | Template Method |
+  | <back:#FFFFFF>      </back> | без патерну |
+endlegend
