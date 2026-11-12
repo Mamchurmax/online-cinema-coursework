@@ -973,3 +973,357 @@ a {
     grid-column: 1 / -1;
   }
 }
+
+/* Plans, checkout, notifications, favorites */
+.title-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.favorite-button--active {
+  border-color: var(--accent);
+  color: #ff9a9e;
+}
+
+.user-menu > .user-menu__role {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.user-menu__role--premium {
+  background: rgb(255 209 102 / 0.15);
+  color: #ffd166;
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 340px));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.plan--paid {
+  border-color: rgb(229 72 77 / 0.6);
+  background: linear-gradient(160deg, rgb(229 72 77 / 0.12), var(--surface) 60%);
+}
+
+.plan--current {
+  outline: 2px solid var(--accent);
+}
+
+.plan__badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.plan__name {
+  margin: 0;
+}
+
+.plan__price {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.plan__price .muted {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.plan__features {
+  flex: 1;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+}
+
+.plan__note {
+  font-size: 0.9rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.table th {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.table__action {
+  margin-left: 10px;
+}
+
+.status {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status--succeeded {
+  background: rgb(61 214 140 / 0.15);
+  color: var(--ok);
+}
+
+.status--pending {
+  background: rgb(245 184 74 / 0.15);
+  color: var(--warn);
+}
+
+.status--failed {
+  background: rgb(229 72 77 / 0.15);
+  color: #ff9a9e;
+}
+
+.checkout {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.checkout .page-title {
+  margin: 0;
+}
+
+.checkout__summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.checkout__form {
+  display: grid;
+  gap: 16px;
+}
+
+.checkout__demo {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgb(245 184 74 / 0.1);
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.scenarios {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scenario {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.scenario span {
+  display: grid;
+  gap: 2px;
+}
+
+.scenario--active {
+  border-color: var(--accent);
+}
+
+.scenario input {
+  margin-top: 4px;
+  accent-color: var(--accent);
+}
+
+.payment-result {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.payment-result h2,
+.payment-result p {
+  margin: 0;
+}
+
+.payment-result--ok {
+  border: 1px solid var(--ok);
+}
+
+.payment-result--failed {
+  border: 1px solid var(--accent);
+}
+
+.payment-result--pending {
+  border: 1px solid var(--warn);
+}
+
+.payment-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.bell {
+  position: relative;
+}
+
+.bell__button {
+  position: relative;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.bell__count {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.bell__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -8px;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.5);
+}
+
+.bell__title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.bell__empty {
+  margin: 0;
+}
+
+.bell__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bell__item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.bell__item--unread {
+  background: var(--surface-2);
+}
+
+.bell__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+
+.bell__icon--payment_succeeded,
+.bell__icon--subscription_activated {
+  color: var(--ok);
+}
+
+.bell__icon--payment_failed {
+  color: var(--accent);
+}
+
+.bell__icon--subscription_expiring {
+  color: var(--warn);
+}
+
+.bell__message {
+  margin: 0 0 2px;
+  font-size: 0.9rem;
+}
+
+.bell__time {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  /* Navigation moves to its own scrollable row under the logo and the user menu. */
+  .header__inner {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 6px;
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+
+  .nav {
+    display: flex;
+    order: 3;
+    width: 100%;
+    gap: 18px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

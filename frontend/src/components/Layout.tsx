@@ -1,7 +1,9 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
 import { useAuth } from "../auth/AuthProvider";
+import { useMySubscription } from "../hooks/useAccount";
 import { useApiHealth } from "../hooks/useApiHealth";
+import { NotificationBell } from "./NotificationBell";
 
 export function Layout() {
   const { user } = useAuth();
@@ -20,10 +22,18 @@ export function Layout() {
               Каталог
             </NavLink>
             {user && (
-              <NavLink to="/history" className="nav__link">
-                Історія
-              </NavLink>
+              <>
+                <NavLink to="/favorites" className="nav__link">
+                  Вибране
+                </NavLink>
+                <NavLink to="/history" className="nav__link">
+                  Історія
+                </NavLink>
+              </>
             )}
+            <NavLink to="/plans" className="nav__link">
+              Тарифи
+            </NavLink>
           </nav>
           <UserMenu />
         </div>
@@ -66,10 +76,12 @@ function UserMenu() {
 
   return (
     <div className="user-menu">
+      <NotificationBell />
       <span className="user-menu__name" title={user.email}>
         {user.display_name}
         {user.role === "admin" && <span className="user-menu__role">адмін</span>}
       </span>
+      <PlanBadge />
       <button className="button button--ghost button--small" onClick={logout}>
         Вийти
       </button>
@@ -88,4 +100,10 @@ function ApiStatus() {
       {label}
     </span>
   );
+}
+
+function PlanBadge() {
+  const { data } = useMySubscription();
+  if (!data?.subscription) return null;
+  return <span className="user-menu__role user-menu__role--premium">{data.plan.name}</span>;
 }

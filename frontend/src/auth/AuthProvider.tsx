@@ -17,7 +17,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** Query keys whose data depends on who is signed in. */
-const USER_QUERY_KEYS = new Set(["playback", "history"]);
+const USER_QUERY_KEYS = new Set(["playback", "history", "subscription", "payments", "notifications", "favorites"]);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();

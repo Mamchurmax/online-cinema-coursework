@@ -107,3 +107,51 @@ export interface HistoryEntry {
   completed: boolean;
   last_watched_at: string;
 }
+
+export interface Plan {
+  id: number;
+  code: string;
+  name: string;
+  price: string; // Decimal as string, e.g. "149.00"
+  period_days: number;
+  max_quality: string;
+  has_ads: boolean;
+}
+
+export interface MySubscription {
+  plan: Plan;
+  subscription: {
+    id: number;
+    status: "active" | "expired" | "cancelled";
+    started_at: string;
+    expires_at: string;
+    plan: Plan;
+  } | null;
+}
+
+export type PaymentScenario = "success" | "pending" | "failed";
+export type PaymentStatus = "pending" | "succeeded" | "failed";
+
+export interface Payment {
+  id: number;
+  amount: string;
+  provider: string;
+  scenario: PaymentScenario;
+  status: PaymentStatus;
+  created_at: string;
+  updated_at: string;
+  plan: Plan;
+}
+
+export interface AppNotification {
+  id: number;
+  type: "payment_succeeded" | "payment_failed" | "subscription_activated" | "subscription_expiring";
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationList {
+  items: AppNotification[];
+  unread_count: number;
+}

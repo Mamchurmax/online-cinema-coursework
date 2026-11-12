@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
 import type { PlaybackInfo } from "../../api/types";
 import { formatClock } from "../../utils/format";
@@ -173,7 +174,15 @@ function QualityBar({ info, hls }: { info: PlaybackInfo; hls: ReturnType<typeof 
       </div>
       <span className="quality-bar__plan">
         Тариф {info.plan_name}: до {info.max_quality}
-        {info.locked_qualities.length > 0 && " · Premium відкриває " + info.locked_qualities.join(", ")}
+        {info.locked_qualities.length > 0 && (
+          <>
+            {" · "}
+            <Link to="/plans" className="link">
+              Premium
+            </Link>{" "}
+            відкриває {info.locked_qualities.join(", ")} і прибирає рекламу
+          </>
+        )}
       </span>
     </div>
   );

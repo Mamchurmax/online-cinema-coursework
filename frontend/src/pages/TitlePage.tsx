@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 
 import { ApiError } from "../api/client";
 import type { Season, TitleDetail } from "../api/types";
+import { FavoriteButton } from "../components/FavoriteButton";
 import { Poster } from "../components/Poster";
 import { StateMessage } from "../components/StateMessage";
 import { useTitle } from "../hooks/useCatalog";
@@ -101,13 +102,16 @@ function TitleHero({ title }: { title: TitleDetail }) {
 
           <p className="title-hero__description">{title.description || "Опис відсутній."}</p>
 
-          {title.has_video ? (
-            <Link to={`/watch/${title.id}`} className="button button--play">
-              ▶ Дивитися
-            </Link>
-          ) : (
-            <p className="muted">Онлайн-перегляд цього тайтлу поки недоступний.</p>
-          )}
+          <div className="title-hero__actions">
+            {title.has_video ? (
+              <Link to={`/watch/${title.id}`} className="button button--play">
+                ▶ Дивитися
+              </Link>
+            ) : (
+              <span className="muted">Онлайн-перегляд цього тайтлу поки недоступний.</span>
+            )}
+            <FavoriteButton titleId={title.id} />
+          </div>
 
           {title.countries.length > 0 && (
             <p className="muted">
