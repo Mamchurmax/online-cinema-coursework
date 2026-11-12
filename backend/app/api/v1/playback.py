@@ -7,9 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import Settings, get_settings
 from app.repositories.billing_repository import PlanRepository, SubscriptionRepository
+from app.repositories.history_repository import WatchHistoryRepository
 from app.repositories.media_repository import AdRepository, VideoAssetRepository
 from app.schemas.playback import PlaybackInfo
 from app.services.billing.plan_service import PlanNotConfiguredError, PlanService
+from app.services.history.history_service import WatchHistoryService
 from app.services.streaming.access_proxy import StreamAccessDeniedError, StreamUnavailableError
 from app.services.streaming.playback_service import PlaybackService, VideoNotFoundError
 
@@ -21,8 +23,10 @@ HLS_MEDIA_TYPE = "application/vnd.apple.mpegurl"
 def get_playback_service(
     db: DbSession, settings: Annotated[Settings, Depends(get_settings)]
 ) -> PlaybackService:
+    videos = VideoAssetRepository(db)
     plans = PlanService(PlanRepository(db), SubscriptionRepository(db))
-    return PlaybackService(VideoAssetRepository(db), AdRepository(db), plans, settings)
+    history = WatchHistoryService(WatchHistoryRepository(db), videos)
+    return PlaybackService(videos, AdRepository(db), plans, history, settings)
 
 
 PlaybackServiceDep = Annotated[PlaybackService, Depends(get_playback_service)]

@@ -7,6 +7,7 @@ from app.core.config import Settings
 from app.models import User, VideoAsset
 from app.repositories.media_repository import AdRepository, VideoAssetRepository
 from app.services.billing.plan_service import PlanService
+from app.services.history.history_service import WatchHistoryService
 from app.services.streaming.access_proxy import (
     HlsFileStreamSource,
     StreamAccessProxy,
@@ -36,6 +37,7 @@ class PlaybackSession:
     plan_name: str
     max_quality: str
     ad: AdInfo | None
+    resume_position_sec: int  # where the viewer stopped last time (0 = from the start)
 
 
 class PlaybackService:
@@ -44,11 +46,13 @@ class PlaybackService:
         videos: VideoAssetRepository,
         ads: AdRepository,
         plans: PlanService,
+        history: WatchHistoryService,
         settings: Settings,
     ) -> None:
         self._videos = videos
         self._ads = ads
         self._plans = plans
+        self._history = history
         self._settings = settings
 
     def start_title(self, user: User, title_id: int) -> PlaybackSession:
@@ -80,6 +84,7 @@ class PlaybackService:
             plan_name=policy.plan.name,
             max_quality=policy.max_quality,
             ad=self._pick_ad() if policy.requires_preroll_ad() else None,
+            resume_position_sec=self._history.resume_position(user, asset.id),
         )
 
     def _policy(self, user: User) -> PlaybackPolicy:

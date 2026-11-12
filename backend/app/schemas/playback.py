@@ -20,3 +20,4 @@ class PlaybackInfo(BaseModel):
     plan_name: str
     max_quality: str
     ad: AdRead | None
+    resume_position_sec: int
